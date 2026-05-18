@@ -95,17 +95,22 @@ export function ProgressMap({ plano, etapas }: Props) {
         <h3 className="text-xl font-bold mb-2 text-slate-900 dark:text-slate-100">
           Mapa de Progresso
         </h3>
-        <p className="text-slate-500 dark:text-slate-400">
-          Gere um plano para ver seu mapa de progresso e acompanhar sua jornada.
+        <p className="text-slate-500 dark:text-slate-400 mb-4">
+          Nenhum plano ativo encontrado. Gere um plano no cabeçalho para visualizar e acompanhar o
+          progresso.
         </p>
+        <Button variant="outline" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          Ir para o Cabeçalho
+        </Button>
       </Card>
     )
   }
 
-  const scrollToCard = (id: string) => {
+  const handleStepClick = (id: string) => {
     const el = document.getElementById(`kanban-card-${id}`)
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.click()
       el.classList.add(
         'ring-4',
         'ring-indigo-500',
@@ -157,12 +162,13 @@ export function ProgressMap({ plano, etapas }: Props) {
               >
                 <div className="relative flex flex-col items-center">
                   <button
-                    onClick={() => scrollToCard(etapa.id)}
+                    onClick={() => handleStepClick(etapa.id)}
                     className={cn(
                       'w-10 h-10 rounded-full flex items-center justify-center shadow-sm z-10 transition-all duration-200 hover:scale-110 shrink-0',
-                      isCompleted && 'bg-green-500 text-white animate-bounce',
-                      isInProgress && 'bg-yellow-400 text-white animate-pulse',
-                      isNotStarted && 'bg-gray-300 text-white dark:bg-gray-600',
+                      isCompleted && 'bg-green-500 text-white',
+                      isInProgress && 'bg-blue-500 text-white animate-pulse',
+                      isNotStarted &&
+                        'bg-white border-2 border-gray-300 text-gray-400 dark:bg-slate-800 dark:border-gray-600 dark:text-gray-500',
                     )}
                     title={etapa.titulo}
                   >
@@ -181,7 +187,7 @@ export function ProgressMap({ plano, etapas }: Props) {
                       isCompleted
                         ? 'text-green-600 dark:text-green-400'
                         : isInProgress
-                          ? 'text-yellow-600 dark:text-yellow-400'
+                          ? 'text-blue-600 dark:text-blue-400'
                           : 'text-gray-400',
                     )}
                   >
@@ -193,7 +199,7 @@ export function ProgressMap({ plano, etapas }: Props) {
                       isCompleted
                         ? 'text-green-600 dark:text-green-400'
                         : isInProgress
-                          ? 'text-yellow-600 dark:text-yellow-400'
+                          ? 'text-blue-600 dark:text-blue-400'
                           : 'text-gray-400',
                     )}
                   >
@@ -233,7 +239,7 @@ export function ProgressMap({ plano, etapas }: Props) {
                 </p>
               </div>
               <Button
-                onClick={() => scrollToCard(nextStep.id)}
+                onClick={() => handleStepClick(nextStep.id)}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200"
               >
                 {nextStep.status === 'em_progresso' ? 'Continuar' : 'Começar'}
