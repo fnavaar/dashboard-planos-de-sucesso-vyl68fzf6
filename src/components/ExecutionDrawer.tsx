@@ -61,6 +61,7 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -498,7 +499,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
               </div>
 
               <div className="space-y-4">
-                <FormLabel>Anexos / Evidências</FormLabel>
+                <Label>Anexos / Evidências</Label>
                 {fields.map((field, index) => (
                   <FormField
                     key={field.id}
@@ -564,7 +565,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <FormLabel>ID da Reunião TLDV</FormLabel>
+                <Label>ID da Reunião TLDV</Label>
                 <Input
                   placeholder="Ex: 123456..."
                   value={tldvMeetingId}
