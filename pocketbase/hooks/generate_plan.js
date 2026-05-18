@@ -1,78 +1,140 @@
+routerAdd('OPTIONS', '/backend/v1/generate-plan', (e) => {
+  e.response.header().set('Access-Control-Allow-Origin', '*')
+  e.response.header().set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  e.response.header().set('Access-Control-Allow-Headers', 'authorization, apikey, content-type')
+  return e.noContent(204)
+})
+
 routerAdd(
   'POST',
-  '/backend/v1/clients/{id}/generate-plan',
+  '/backend/v1/generate-plan',
   (e) => {
-    const id = e.request.pathValue('id')
-    const userId = e.auth?.id
-    if (!userId) return e.unauthorizedError('auth required')
-
-    const client = $app.findRecordById('clientes', id)
-    if (client.getString('user_id') !== userId) return e.forbiddenError('not owner')
-
-    let existing = null
     try {
-      existing = $app.findFirstRecordByData('planos', 'cliente_id', id)
-    } catch (_) {}
+      const userId = e.auth?.id
+      if (!userId) return e.json(401, { error: 'Não autorizado.' })
 
-    if (existing) return e.badRequestError('plan already exists')
+      const body = e.requestInfo().body || {}
+      const cliente_id = body.cliente_id
+      const objetivo_principal = body.objetivo_principal
+      const contexto = body.contexto
 
-    const prompt = `Você é um especialista em Customer Success. Crie um plano de sucesso gamificado para um cliente com os seguintes detalhes:
-Objetivo Principal: ${client.getString('objetivo_principal')}
-Contexto: ${client.getString('contexto')}
-
-Sua resposta deve ser EXATAMENTE um array JSON contendo as etapas do plano. O plano deve ter cerca de 4 a 6 etapas.
-Cada etapa (objeto) deve conter:
-- "titulo" (string curta e engajadora)
-- "descricao" (string detalhando o que fazer)
-- "objetivo" (string clara)
-- "tempo_estimado" (string, ex: "1 semana", "3 dias")
-- "ordem" (number, começando em 1)
-
-NÃO inclua texto adicional, markdown ou explicações. Apenas o array JSON puro.`
-
-    const reply = $ai.chat({
-      model: 'fast',
-      messages: [{ role: 'system', content: prompt }],
-    })
-
-    let stages = []
-    try {
-      const raw = reply.choices[0].message.content
-      const match = raw.match(/\[[\s\S]*\]/)
-      if (match) {
-        stages = JSON.parse(match[0])
-      } else {
-        stages = JSON.parse(raw)
+      if (!cliente_id || typeof cliente_id !== 'string') {
+        return e.json(400, { error: 'O campo cliente_id é inválido.' })
       }
+      if (
+        !objetivo_principal ||
+        typeof objetivo_principal !== 'string' ||
+        objetivo_principal.trim().length < 10
+      ) {
+        return e.json(400, {
+          error: 'O objetivo_principal é obrigatório e deve ter no mínimo 10 caracteres.',
+        })
+      }
+
+      let client
+      try {
+        client = $app.findRecordById('clientes', cliente_id)
+      } catch (_) {
+        return e.json(400, { error: 'Cliente não encontrado.' })
+      }
+
+      if (client.getString('user_id') !== userId) {
+        return e.json(400, { error: 'Acesso negado ao cliente.' })
+      }
+
+      const agentPayload = {
+        objetivo: objetivo_principal,
+        contexto: contexto || '',
+        empresa: 'Adapta',
+      }
+
+      let result
+      let retries = 0
+      while (retries < 2) {
+        try {
+          result = $ai.agent('agente-mapass').chat({
+            user_id: userId,
+            message: JSON.stringify(agentPayload),
+          })
+          break
+        } catch (err) {
+          retries++
+          if (retries >= 2) {
+            $app.logger().error('Erro ao chamar o agente após retentativa', 'error', err.message)
+            return e.json(500, { error: 'Erro de comunicação com a IA. Tente novamente.' })
+          }
+        }
+      }
+
+      let planData
+      try {
+        planData = JSON.parse(result.content)
+      } catch (_) {
+        try {
+          const match = result.content.match(/\{[\s\S]*\}/)
+          if (!match) throw new Error('No object found')
+          planData = JSON.parse(match[0])
+        } catch (err) {
+          $app.logger().error('Erro ao fazer parse da resposta da IA', 'content', result.content)
+          return e.json(500, { error: 'Erro ao processar resposta da IA. Tente novamente.' })
+        }
+      }
+
+      const steps = planData.etapas || []
+      if (steps.length < 7 || steps.length > 10) {
+        $app
+          .logger()
+          .warn('AI retornou um número de etapas fora do esperado (7 a 10)', 'count', steps.length)
+      }
+
+      let planId = ''
+      let createdEtapas = []
+
+      $app.runInTransaction((txApp) => {
+        const planosCol = txApp.findCollectionByNameOrId('planos')
+        const plan = new Record(planosCol)
+        plan.set('cliente_id', cliente_id)
+        plan.set('titulo', planData.titulo || 'Plano de Sucesso: ' + client.getString('nome'))
+        plan.set('descricao', planData.descricao || '')
+        plan.set('status', 'ativo')
+        txApp.save(plan)
+        planId = plan.id
+
+        const etapasCol = txApp.findCollectionByNameOrId('etapas')
+        for (let i = 0; i < steps.length; i++) {
+          const s = steps[i]
+          const etapa = new Record(etapasCol)
+          etapa.set('plano_id', plan.id)
+          etapa.set('titulo', s.titulo || '')
+          etapa.set('descricao', s.descricao || '')
+          etapa.set('objetivo', s.objetivo || '')
+          etapa.set('tempo_estimado', s.tempo_estimado || '')
+          etapa.set('ordem', i + 1)
+          etapa.set('status', 'a_fazer')
+          txApp.save(etapa)
+
+          createdEtapas.push({
+            id: etapa.id,
+            titulo: etapa.getString('titulo'),
+            descricao: etapa.getString('descricao'),
+            objetivo: etapa.getString('objetivo'),
+            tempo_estimado: etapa.getString('tempo_estimado'),
+            ordem: etapa.getInt('ordem'),
+            status: etapa.getString('status'),
+          })
+        }
+      })
+
+      return e.json(200, {
+        data: {
+          plano_id: planId,
+          etapas: createdEtapas,
+        },
+      })
     } catch (err) {
-      return e.internalServerError('Failed to parse AI response')
+      $app.logger().error('Erro geral no generatePlan', 'error', err.message)
+      return e.json(500, { error: 'Ocorreu um erro interno. Tente novamente mais tarde.' })
     }
-
-    let planId = ''
-    $app.runInTransaction((txApp) => {
-      const planosCol = txApp.findCollectionByNameOrId('planos')
-      const plan = new Record(planosCol)
-      plan.set('cliente_id', id)
-      plan.set('titulo', 'Plano de Sucesso: ' + client.getString('nome'))
-      plan.set('status', 'ativo')
-      txApp.save(plan)
-      planId = plan.id
-
-      const etapasCol = txApp.findCollectionByNameOrId('etapas')
-      for (const s of stages) {
-        const etapa = new Record(etapasCol)
-        etapa.set('plano_id', plan.id)
-        etapa.set('titulo', s.titulo)
-        etapa.set('descricao', s.descricao)
-        etapa.set('objetivo', s.objetivo)
-        etapa.set('tempo_estimado', s.tempo_estimado)
-        etapa.set('ordem', s.ordem)
-        etapa.set('status', 'a_fazer')
-        txApp.save(etapa)
-      }
-    })
-
-    return e.json(200, { success: true, plan_id: planId })
   },
   $apis.requireAuth(),
 )
