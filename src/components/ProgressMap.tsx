@@ -136,7 +136,7 @@ export function ProgressMap({ plano, etapas }: Props) {
         </div>
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
           <div
-            className="h-full rounded-full transition-all duration-[2000ms] ease-out bg-gradient-to-r from-indigo-500 to-green-500"
+            className="h-full rounded-full transition-all duration-1000 ease-out bg-gradient-to-r from-indigo-500 to-green-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -204,11 +204,11 @@ export function ProgressMap({ plano, etapas }: Props) {
                 {index < sortedEtapas.length - 1 && (
                   <div className="w-1 h-8 md:w-8 lg:w-12 xl:w-16 md:h-1 bg-gray-200 dark:bg-gray-700 relative my-1 md:my-0 md:mx-1 shrink-0">
                     <div
-                      className="md:hidden absolute top-0 left-0 w-full bg-green-500 transition-all duration-[2000ms] ease-out"
+                      className="md:hidden absolute top-0 left-0 w-full bg-green-500 transition-all duration-1000 ease-out"
                       style={{ height: fillPercentage }}
                     />
                     <div
-                      className="hidden md:block absolute top-0 left-0 h-full bg-green-500 transition-all duration-[2000ms] ease-out"
+                      className="hidden md:block absolute top-0 left-0 h-full bg-green-500 transition-all duration-1000 ease-out"
                       style={{ width: fillPercentage }}
                     />
                   </div>
