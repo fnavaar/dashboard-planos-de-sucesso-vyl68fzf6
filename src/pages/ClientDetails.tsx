@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useRealtime } from '@/hooks/use-realtime'
 import { ClientHeader } from '@/components/ClientHeader'
 import { KanbanBoard } from '@/components/KanbanBoard'
+import { ProgressMap } from '@/components/ProgressMap'
 import { Confetti } from '@/components/Confetti'
 
 export default function ClientDetails() {
@@ -79,6 +80,8 @@ export default function ClientDetails() {
           setTimeout(() => setShowConfetti(false), 3000)
         }}
       />
+
+      <ProgressMap plano={plano} etapas={etapas} />
 
       <KanbanBoard
         client={client}

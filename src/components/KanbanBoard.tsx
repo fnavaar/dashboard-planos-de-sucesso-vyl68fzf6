@@ -199,11 +199,12 @@ function KanbanCard({
 
   return (
     <Card
+      id={`kanban-card-${etapa.id}`}
       draggable
       onDragStart={(e) => onDragStart(e, etapa.id)}
       onClick={() => onClick(etapa)}
       className={cn(
-        'p-4 cursor-grab active:cursor-grabbing hover:shadow-lg hover:scale-[1.02] transition-all duration-200 relative overflow-hidden group',
+        'p-4 cursor-grab active:cursor-grabbing hover:shadow-lg hover:scale-[1.02] transition-all duration-200 relative overflow-hidden group scroll-m-24',
         themeClasses[etapa.status],
       )}
     >
