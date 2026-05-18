@@ -1,13 +1,85 @@
-/* Layout Component - A component that wraps the main content of the app
-   - Use this file to add a header, footer, or other elements that should be present on every page
-   - This component is used in the App.tsx file to wrap the main content of the app */
-
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '@/hooks/use-auth'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Plus, User, LogOut } from 'lucide-react'
+import { useNewClient } from '@/contexts/NewClientContext'
+import { NewClientModal } from '@/components/NewClientModal'
 
 export default function Layout() {
+  const { user, signOut } = useAuth()
+  const { setIsOpen } = useNewClient()
+  const navigate = useNavigate()
+
   return (
-    <main className="flex flex-col min-h-screen">
-      <Outlet />
-    </main>
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
+      <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/75 dark:bg-slate-900/75 border-b border-slate-200 dark:border-slate-800">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="bg-indigo-600 p-2 rounded-lg">
+              <User className="text-white w-5 h-5" />
+            </div>
+            <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">
+              Planos de Sucesso
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={() => setIsOpen(true)}
+              className="hidden sm:flex bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-transform active:scale-95"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Novo Cliente
+            </Button>
+            <Button
+              onClick={() => setIsOpen(true)}
+              size="icon"
+              className="sm:hidden bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-transform active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="outline-none focus:ring-2 focus:ring-indigo-600 rounded-full">
+                  <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-700">
+                    <AvatarFallback className="bg-indigo-100 text-indigo-700 font-medium">
+                      {user?.name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5 text-sm font-medium text-slate-900 dark:text-white truncate">
+                  {user?.name || 'Perfil'}
+                </div>
+                <div className="px-2 pb-1.5 text-xs text-slate-500 truncate">{user?.email}</div>
+                <DropdownMenuItem
+                  onClick={() => {
+                    signOut()
+                    navigate('/login')
+                  }}
+                  className="text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 mr-2" /> Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-8 max-w-7xl">
+        <Outlet />
+      </main>
+
+      <NewClientModal />
+    </div>
   )
 }
