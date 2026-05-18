@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale'
 import { CalendarIcon, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { useMobile } from '@/hooks/use-mobile'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuth } from '@/hooks/use-auth'
 import { Etapa } from '@/services/etapas'
 import {
@@ -75,7 +75,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSaved }: Props) {
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
   const { user } = useAuth()
   const canEdit = user?.id === clientUserId
 

@@ -64,6 +64,8 @@ export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Pro
     }
   }
 
+  const [selectedEtapa, setSelectedEtapa] = useState<Etapa | null>(null)
+
   if (!plano) {
     return (
       <Card className="p-12 flex flex-col items-center justify-center text-center bg-indigo-50/50 dark:bg-indigo-950/20 border-dashed border-2 border-indigo-200 dark:border-indigo-900 transition-all duration-200">
@@ -108,8 +110,6 @@ export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Pro
       text: 'text-emerald-800 dark:text-emerald-400',
     },
   ]
-
-  const [selectedEtapa, setSelectedEtapa] = useState<Etapa | null>(null)
 
   const ColumnContent = ({ status, color, border, title, text }: any) => {
     const isDragOver = dragOverCol === status
