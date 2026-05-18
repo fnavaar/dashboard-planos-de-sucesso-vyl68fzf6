@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-18T20:38:54.392Z",
+  "generatedAt": "2026-05-18T21:08:20.951Z",
   "collections": [
     {
       "name": "users",
@@ -119,6 +119,18 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "tldv_meeting_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "kickoff_transcript",
+          "type": "text",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": ["CREATE INDEX idx_clientes_user_id ON clientes (user_id)"]

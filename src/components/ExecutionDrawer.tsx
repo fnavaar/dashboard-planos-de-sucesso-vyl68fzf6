@@ -277,7 +277,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
       }
 
       if (etapa.status !== 'concluido') {
-        await updateEtapaStatus(etapa.id, 'concluido')
+        await updateEtapaStatus(etapa.id, 'concluido', etapa)
       }
 
       toast.success('Dados salvos e etapa concluída com sucesso', {

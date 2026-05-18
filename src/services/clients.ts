@@ -9,6 +9,8 @@ export interface Cliente {
   data_inicio: string
   progresso: number
   user_id: string
+  tldv_meeting_id?: string
+  kickoff_transcript?: string
   created: string
   updated: string
 }
