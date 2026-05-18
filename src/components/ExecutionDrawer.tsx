@@ -4,8 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CalendarIcon, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { CalendarIcon, Plus, Trash2, CheckCircle2, AlertCircle, Bot } from 'lucide-react'
 import { toast } from 'sonner'
+import pb from '@/lib/pocketbase/client'
 
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuth } from '@/hooks/use-auth'
@@ -101,6 +102,46 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     control: form.control,
     name: 'anexos',
   })
+
+  const [tldvMeetingId, setTldvMeetingId] = useState('')
+  const [importingTldv, setImportingTldv] = useState(false)
+
+  const handleImportTldv = async () => {
+    if (!tldvMeetingId.trim()) {
+      toast.error('Informe o ID da reunião do TLDV.')
+      return
+    }
+
+    setImportingTldv(true)
+    try {
+      const res = await pb.send('/backend/v1/fetchTLDVTranscript', {
+        method: 'POST',
+        body: JSON.stringify({
+          etapa_id: etapa.id,
+          tldv_meeting_id: tldvMeetingId.trim(),
+        }),
+      })
+
+      if (res?.data) {
+        form.setValue('o_que_foi_feito', res.data.o_que_foi_feito || '')
+        form.setValue('como_foi_executado', res.data.como_foi_executado || '')
+        if (res.data.quando_foi_executado) {
+          form.setValue('quando_foi_executado', new Date(res.data.quando_foi_executado))
+        }
+
+        toast.success('Resumo importado com sucesso!', {
+          icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+        })
+
+        await fetchData()
+      }
+    } catch (err: any) {
+      const msg = err?.response?.error || 'Erro ao importar do TLDV.'
+      toast.error(msg)
+    } finally {
+      setImportingTldv(false)
+    }
+  }
 
   const fetchData = async () => {
     if (!open) return
@@ -265,6 +306,33 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-md text-sm text-slate-700 dark:text-slate-300">
               {etapa.objetivo || 'Sem objetivo definido.'}
             </div>
+          </div>
+
+          <div className="mb-6 bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+            <h3 className="text-sm font-semibold text-indigo-900 dark:text-indigo-300 mb-2 flex items-center gap-2">
+              <Bot className="w-4 h-4" />
+              Preencher com IA (TLDV)
+            </h3>
+            <div className="flex gap-2">
+              <Input
+                placeholder="ID da reunião (ex: 123456...)"
+                value={tldvMeetingId}
+                onChange={(e) => setTldvMeetingId(e.target.value)}
+                disabled={!canEdit || importingTldv}
+                className="bg-white dark:bg-slate-900"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleImportTldv}
+                disabled={!canEdit || importingTldv}
+              >
+                {importingTldv ? 'Importando...' : 'Importar'}
+              </Button>
+            </div>
+            <p className="text-xs text-indigo-700/70 dark:text-indigo-400/70 mt-2">
+              Gera automaticamente um resumo das ações, ferramentas utilizadas e a data da reunião.
+            </p>
           </div>
 
           <Form {...form}>
