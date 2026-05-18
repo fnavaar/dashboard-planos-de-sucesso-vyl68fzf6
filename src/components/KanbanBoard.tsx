@@ -36,6 +36,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { getErrorMessage } from '@/lib/pocketbase/errors'
 
 interface Props {
   client: Cliente
@@ -78,7 +79,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
         await updateCardExecucao(id, { etapa_id: etapaId })
         onUpdate()
       } catch (err) {
-        toast.error('Erro ao mover a tarefa')
+        toast.error(getErrorMessage(err) || 'Erro ao mover a tarefa')
       }
     }
   }
@@ -89,7 +90,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
       await updateCardExecucao(card.id, { quando_foi_executado: completed ? today : '' })
       onUpdate()
     } catch (err) {
-      toast.error('Erro ao atualizar tarefa')
+      toast.error(getErrorMessage(err) || 'Erro ao atualizar tarefa')
     }
   }
 
@@ -100,7 +101,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
       onUpdate()
       toast.success('Fase concluída!')
     } catch (err) {
-      toast.error('Erro ao concluir fase')
+      toast.error(getErrorMessage(err) || 'Erro ao concluir fase')
     }
   }
 
@@ -373,7 +374,7 @@ function TaskDialog({
       }
       onSave()
     } catch (err) {
-      toast.error('Erro ao salvar tarefa')
+      toast.error(getErrorMessage(err) || 'Erro ao salvar tarefa')
     } finally {
       setLoading(false)
     }
@@ -388,7 +389,7 @@ function TaskDialog({
       toast.success('Tarefa excluída')
       onSave()
     } catch (err) {
-      toast.error('Erro ao excluir tarefa')
+      toast.error(getErrorMessage(err) || 'Erro ao excluir tarefa')
     } finally {
       setLoading(false)
     }
