@@ -113,8 +113,9 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     }
 
     setImportingTldv(true)
+    const toastId = toast.loading('Processando transcrição...')
     try {
-      const res = await pb.send('/backend/v1/fetchTLDVTranscript', {
+      const res = await pb.send('/backend/v1/fetch-tldv-transcript', {
         method: 'POST',
         body: JSON.stringify({
           etapa_id: etapa.id,
@@ -130,6 +131,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
         }
 
         toast.success('Resumo importado com sucesso!', {
+          id: toastId,
           icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
         })
 
@@ -137,7 +139,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
       }
     } catch (err: any) {
       const msg = err?.response?.error || 'Erro ao importar do TLDV.'
-      toast.error(msg)
+      toast.error(msg, { id: toastId })
     } finally {
       setImportingTldv(false)
     }

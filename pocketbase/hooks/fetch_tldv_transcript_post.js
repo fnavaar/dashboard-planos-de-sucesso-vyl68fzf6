@@ -1,6 +1,6 @@
 routerAdd(
   'POST',
-  '/backend/v1/fetchTLDVTranscript',
+  '/backend/v1/fetch-tldv-transcript',
   (e) => {
     e.response.header().set('Access-Control-Allow-Origin', '*')
 
@@ -49,9 +49,9 @@ routerAdd(
         timeout: 15,
       })
 
-      if (metaRes.statusCode === 401) return e.json(401, { error: 'Acesso negado na API do TLDV.' })
-      if (metaRes.statusCode === 404)
-        return e.json(404, { error: 'Reunião não encontrada no TLDV.' })
+      if (metaRes.statusCode === 401)
+        return e.json(401, { error: 'Erro de autenticação com TLDV.' })
+      if (metaRes.statusCode === 404) return e.json(404, { error: 'Reunião não encontrada.' })
 
       if (metaRes.statusCode === 200 && metaRes.json) {
         if (metaRes.json.created_at) meetingDate = metaRes.json.created_at
@@ -74,9 +74,8 @@ routerAdd(
       })
 
       if (transRes.statusCode === 401)
-        return e.json(401, { error: 'Acesso negado na API do TLDV para transcrição.' })
-      if (transRes.statusCode === 404)
-        return e.json(404, { error: 'Transcrição não encontrada no TLDV.' })
+        return e.json(401, { error: 'Erro de autenticação com TLDV.' })
+      if (transRes.statusCode === 404) return e.json(404, { error: 'Reunião não encontrada.' })
 
       if (transRes.statusCode === 200) {
         if (transRes.json) {
@@ -105,19 +104,23 @@ routerAdd(
 
     while (attempt <= retries.length) {
       try {
-        const prompt = `Resuma esta transcrição de reunião em 3-5 pontos principais. Formato: lista numerada. Foco em ações, decisões e próximos passos.\n\nTranscrição:\n${transcriptText.substring(0, 15000)}`
-        const aiRes = $ai.chat({
-          model: 'fast',
-          messages: [
-            { role: 'system', content: 'Você é um assistente que analisa reuniões.' },
-            { role: 'user', content: prompt },
-          ],
+        const prompt = `Transcrição da reunião:\n${transcriptText.substring(0, 15000)}\n\nExtraia as informações solicitadas nas instruções do sistema. Retorne APENAS um objeto JSON válido com as seguintes chaves:\n- "o_que_foi_feito": A lista numerada com os pontos principais em português.\n- "como_foi_executado": A metodologia ou ferramentas mencionadas.`
+        const aiRes = $ai.agent('tldv-analyzer').chat({
+          user_id: userId,
+          message: prompt,
         })
-        aiResult = aiRes.choices[0].message.content
+        aiResult = aiRes.content
         break
       } catch (err) {
-        if (err.status === 503 && attempt < retries.length) {
-          $app.logger().warn('IA Indisponível (503), tentando novamente', 'tentativa', attempt + 1)
+        let isRetryable = false
+        if (err.status === 503 || err.status === 502) {
+          isRetryable = true
+        } else if (err.name === 'SkipAiConfigError' || err.name === 'SkipAiError') {
+          isRetryable = true
+        }
+
+        if (isRetryable && attempt < retries.length) {
+          $app.logger().warn('IA Indisponível, tentando novamente', 'tentativa', attempt + 1)
           let end = Date.now() + retries[attempt]
           while (Date.now() < end) {
             /* busy wait fallback */
@@ -125,8 +128,8 @@ routerAdd(
           attempt++
           continue
         }
-        $app.logger().error('Erro no processamento da IA', 'erro', err.message)
-        aiErrorMsg = err.message
+        $app.logger().error('Erro no processamento da IA', 'erro', err.message || String(err))
+        aiErrorMsg = err.message || String(err)
         break
       }
     }
@@ -137,24 +140,18 @@ routerAdd(
       })
     }
 
-    let methodologies = ''
+    let parsedResult = {}
     try {
-      const aiRes2 = $ai.chat({
-        model: 'fast',
-        messages: [
-          {
-            role: 'system',
-            content: 'Identifique as ferramentas ou metodologias mencionadas na transcrição.',
-          },
-          {
-            role: 'user',
-            content: `Quais metodologias ou ferramentas (ex: Scrum, Kanban, Figma, AWS, etc) foram mencionadas nesta transcrição? Responda de forma concisa. Se não houver, responda apenas "Nenhuma metodologia específica mencionada.".\n\nTranscrição:\n${transcriptText.substring(0, 15000)}`,
-          },
-        ],
-      })
-      methodologies = aiRes2.choices[0].message.content
-    } catch (err) {
-      methodologies = 'Não foi possível extrair.'
+      let jsonText = aiResult
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim()
+      parsedResult = JSON.parse(jsonText)
+    } catch (e) {
+      parsedResult = {
+        o_que_foi_feito: aiResult,
+        como_foi_executado: 'Não foi possível extrair a metodologia separadamente.',
+      }
     }
 
     let card = null
@@ -164,8 +161,8 @@ routerAdd(
 
     const payload = {
       etapa_id: etapa_id,
-      o_que_foi_feito: aiResult,
-      como_foi_executado: methodologies,
+      o_que_foi_feito: parsedResult.o_que_foi_feito || '',
+      como_foi_executado: parsedResult.como_foi_executado || '',
       quando_foi_executado: meetingDate,
     }
 
