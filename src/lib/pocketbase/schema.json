@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-18T12:44:47.344Z",
+  "generatedAt": "2026-05-18T12:54:10.942Z",
   "collections": [
     {
       "name": "users",
@@ -37,6 +37,13 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "role",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["admin", "user"]
         }
       ],
       "indexes": [
@@ -45,7 +52,7 @@
       ]
     },
     {
-      "name": "clients",
+      "name": "clientes",
       "type": "base",
       "apiRules": {
         "list": "@request.auth.id != '' && user_id = @request.auth.id",
@@ -56,48 +63,48 @@
       },
       "fields": [
         {
-          "name": "name",
-          "type": "text",
-          "required": true,
-          "system": false
-        },
-        {
-          "name": "goal",
-          "type": "text",
-          "required": true,
-          "system": false
-        },
-        {
-          "name": "context",
-          "type": "text",
-          "required": true,
-          "system": false
-        },
-        {
-          "name": "status",
-          "type": "select",
-          "required": true,
-          "system": false,
-          "selectValues": ["Ativo", "Pausado", "Concluído"]
-        },
-        {
-          "name": "start_date",
-          "type": "date",
-          "required": true,
-          "system": false
-        },
-        {
-          "name": "progress",
-          "type": "number",
-          "required": true,
-          "system": false
-        },
-        {
           "name": "user_id",
           "type": "relation",
           "required": true,
           "system": false,
           "collectionRef": "users"
+        },
+        {
+          "name": "nome",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "objetivo_principal",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "contexto",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["ativo", "pausado", "concluido"]
+        },
+        {
+          "name": "data_inicio",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "progresso",
+          "type": "number",
+          "required": false,
+          "system": false
         },
         {
           "name": "created",
@@ -114,11 +121,270 @@
           "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": [
-        "CREATE INDEX idx_clients_name ON clients (name)",
-        "CREATE INDEX idx_clients_status ON clients (status)",
-        "CREATE INDEX idx_clients_user_id ON clients (user_id)"
-      ]
+      "indexes": ["CREATE INDEX idx_clientes_user_id ON clientes (user_id)"]
+    },
+    {
+      "name": "planos",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "cliente_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "clientes"
+        },
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["rascunho", "ativo", "concluido"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "etapas",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "plano_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "planos"
+        },
+        {
+          "name": "titulo",
+          "type": "text",
+          "required": true,
+          "system": false
+        },
+        {
+          "name": "descricao",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "objetivo",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "tempo_estimado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "ordem",
+          "type": "number",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "status",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["a_fazer", "em_progresso", "concluido"]
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "cards_execucao",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id",
+        "create": "@request.auth.id != ''",
+        "update": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id",
+        "delete": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id"
+      },
+      "fields": [
+        {
+          "name": "etapa_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "etapas"
+        },
+        {
+          "name": "o_que_foi_feito",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "passos_seguidos",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "como_foi_executado",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "quando_foi_executado",
+          "type": "date",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "responsavel",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "anexos",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
+    },
+    {
+      "name": "historico_acoes",
+      "type": "base",
+      "apiRules": {
+        "list": "@request.auth.id != '' && user_id = @request.auth.id",
+        "view": "@request.auth.id != '' && user_id = @request.auth.id",
+        "create": null,
+        "update": null,
+        "delete": null
+      },
+      "fields": [
+        {
+          "name": "user_id",
+          "type": "relation",
+          "required": true,
+          "system": false,
+          "collectionRef": "users"
+        },
+        {
+          "name": "tabela",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "registro_id",
+          "type": "text",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "acao",
+          "type": "select",
+          "required": false,
+          "system": false,
+          "selectValues": ["create", "update", "delete"]
+        },
+        {
+          "name": "dados_antes",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "dados_depois",
+          "type": "json",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate"]
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "required": false,
+          "system": false,
+          "autodateTriggers": ["onCreate", "onUpdate"]
+        }
+      ],
+      "indexes": []
     }
   ]
 }

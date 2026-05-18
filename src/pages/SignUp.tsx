@@ -4,11 +4,12 @@ import { Navigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { User, Lock, AlertCircle } from 'lucide-react'
+import { User, Lock, Mail, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-export default function Login() {
-  const { signIn, isAuthenticated } = useAuth()
+export default function SignUp() {
+  const { signUp, isAuthenticated } = useAuth()
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -22,9 +23,9 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error: signInError } = await signIn(email, password)
-    if (signInError) {
-      setError('Credenciais inválidas. Tente novamente.')
+    const { error: signUpError } = await signUp(email, password, name)
+    if (signUpError) {
+      setError('Erro ao criar conta. Verifique os dados e tente novamente.')
     }
     setLoading(false)
   }
@@ -33,11 +34,11 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
       <div className="w-full max-w-md space-y-8 animate-fade-in-up">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center p-3 bg-indigo-600 rounded-xl mb-6 shadow-lg">
+          <div className="inline-flex items-center justify-center p-3 bg-pink-500 rounded-xl mb-6 shadow-lg">
             <User className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Planos de Sucesso</h1>
-          <p className="text-slate-500 mt-2">Faça login para gerenciar clientes Elite</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Criar Conta</h1>
+          <p className="text-slate-500 mt-2">Junte-se ao Planos de Sucesso</p>
         </div>
 
         <Card className="p-8 shadow-xl border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -50,12 +51,26 @@ export default function Login() {
             )}
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
+                <label className="text-sm font-medium">Nome</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input
+                    type="text"
+                    placeholder="Seu nome"
+                    className="pl-9"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
                     type="email"
-                    placeholder="navaar@adapta.org"
+                    placeholder="seu@email.com"
                     className="pl-9"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -74,6 +89,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    minLength={8}
                   />
                 </div>
               </div>
@@ -81,16 +97,16 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="w-full bg-pink-500 hover:bg-pink-600 text-white"
               disabled={loading}
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Criando conta...' : 'Cadastrar'}
             </Button>
 
             <div className="text-center text-sm text-slate-500 mt-4">
-              Não tem uma conta?{' '}
-              <Link to="/signup" className="text-indigo-600 hover:underline font-medium">
-                Cadastre-se
+              Já tem uma conta?{' '}
+              <Link to="/login" className="text-pink-500 hover:underline font-medium">
+                Faça Login
               </Link>
             </div>
           </form>

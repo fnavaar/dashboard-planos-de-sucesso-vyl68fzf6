@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getClients, Client } from '@/services/clients'
+import { getClientes, Cliente } from '@/services/clients'
 import { useRealtime } from '@/hooks/use-realtime'
 import { useDebounce } from '@/hooks/use-debounce'
 import { Input } from '@/components/ui/input'
@@ -41,7 +41,7 @@ const AnimatedProgress = ({ value }: { value: number }) => {
 }
 
 export default function Index() {
-  const [clients, setClients] = useState<Client[]>([])
+  const [clients, setClients] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [searchTerm, setSearchTime] = useState('')
@@ -58,16 +58,18 @@ export default function Index() {
       let filter = ''
       const conditions = []
       if (debouncedSearch) {
-        conditions.push(`name ~ "${debouncedSearch.replace(/"/g, '\\"')}"`)
+        conditions.push(`nome ~ "${debouncedSearch.replace(/"/g, '\\"')}"`)
       }
       if (statusFilter !== 'Todos') {
-        conditions.push(`status = "${statusFilter}"`)
+        const filterVal =
+          statusFilter === 'Ativo' ? 'ativo' : statusFilter === 'Pausado' ? 'pausado' : 'concluido'
+        conditions.push(`status = "${filterVal}"`)
       }
       if (conditions.length > 0) {
         filter = conditions.join(' && ')
       }
 
-      const data = await getClients(filter, '-created')
+      const data = await getClientes(filter, '-created')
       setClients(data)
     } catch (err) {
       setError(true)
@@ -80,7 +82,7 @@ export default function Index() {
     loadData()
   }, [debouncedSearch, statusFilter])
 
-  useRealtime('clients', () => {
+  useRealtime('clientes', () => {
     loadData()
   })
 
@@ -227,29 +229,28 @@ export default function Index() {
                   <div className="flex items-center gap-4">
                     <Avatar className="h-14 w-14 border-4 border-slate-50 dark:border-slate-800 shadow-sm">
                       <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-pink-500 text-white font-extrabold text-xl">
-                        {client.name.charAt(0).toUpperCase()}
+                        {client.nome.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
                       <h3 className="font-extrabold text-slate-900 dark:text-white line-clamp-1 text-lg">
-                        {client.name}
+                        {client.nome}
                       </h3>
                       <p className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                        {format(new Date(client.start_date), 'dd/MM/yyyy', { locale: ptBR })}
+                        {format(new Date(client.data_inicio), 'dd/MM/yyyy', { locale: ptBR })}
                       </p>
                     </div>
                   </div>
                 </div>
-
                 <div className="mb-6 space-y-4">
                   <Badge
                     className={cn(
-                      'font-extrabold rounded-full px-4 py-1.5 border-0 shadow-sm text-xs',
-                      client.status === 'Ativo' &&
+                      'font-extrabold rounded-full px-4 py-1.5 border-0 shadow-sm text-xs capitalize',
+                      client.status === 'ativo' &&
                         'bg-emerald-100 text-emerald-700 hover:bg-emerald-200',
-                      client.status === 'Pausado' &&
+                      client.status === 'pausado' &&
                         'bg-slate-100 text-slate-600 hover:bg-slate-200',
-                      client.status === 'Concluído' &&
+                      client.status === 'concluido' &&
                         'bg-blue-100 text-blue-700 hover:bg-blue-200',
                     )}
                   >
@@ -257,10 +258,9 @@ export default function Index() {
                   </Badge>
                   <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-1">
                     <span className="font-bold text-slate-900 dark:text-slate-200 mr-1.5">🎯</span>
-                    {client.goal}
+                    {client.objetivo_principal}
                   </p>
                 </div>
-
                 <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
@@ -269,14 +269,14 @@ export default function Index() {
                     </span>
                     <span
                       className={cn(
-                        client.progress === 100 ? 'text-emerald-600' : 'text-indigo-600',
+                        client.progresso === 100 ? 'text-emerald-600' : 'text-indigo-600',
                       )}
                     >
-                      {client.progress}%
+                      {client.progresso}%
                     </span>
                   </div>
-                  <AnimatedProgress value={client.progress} />
-                </div>
+                  <AnimatedProgress value={client.progresso} />
+                </div>{' '}
               </Card>
             ))}
           </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getClient, Client } from '@/services/clients'
+import { getCliente, Cliente } from '@/services/clients'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 export default function ClientDetails() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [client, setClient] = useState<Client | null>(null)
+  const [client, setClient] = useState<Cliente | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
@@ -32,7 +32,7 @@ export default function ClientDetails() {
     const fetchClient = async () => {
       try {
         setLoading(true)
-        const data = await getClient(id)
+        const data = await getCliente(id)
         setClient(data)
       } catch (err) {
         setError(true)
@@ -73,7 +73,7 @@ export default function ClientDetails() {
   }
 
   const StatusIcon =
-    client.status === 'Ativo' ? Clock : client.status === 'Pausado' ? PauseCircle : CheckCircle2
+    client.status === 'ativo' ? Clock : client.status === 'pausado' ? PauseCircle : CheckCircle2
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -91,20 +91,20 @@ export default function ClientDetails() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-8">
               <Avatar className="h-20 w-20 border-2 border-slate-100 dark:border-slate-800 shadow-sm">
                 <AvatarFallback className="bg-indigo-50 text-indigo-600 text-2xl font-bold">
-                  {client.name.charAt(0).toUpperCase()}
+                  {client.nome.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white line-clamp-2">
-                    {client.name}
+                    {client.nome}
                   </h1>
                   <Badge
                     className={cn(
-                      'w-fit px-3 py-1 text-sm flex items-center gap-2',
-                      client.status === 'Ativo'
+                      'w-fit px-3 py-1 text-sm flex items-center gap-2 capitalize',
+                      client.status === 'ativo'
                         ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                        : client.status === 'Pausado'
+                        : client.status === 'pausado'
                           ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                           : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
                     )}
@@ -117,7 +117,7 @@ export default function ClientDetails() {
                   <CalendarDays className="w-4 h-4" />
                   <span>
                     Iniciado em{' '}
-                    {format(new Date(client.start_date), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                    {format(new Date(client.data_inicio), "dd 'de' MMMM, yyyy", { locale: ptBR })}
                   </span>
                 </div>
               </div>
@@ -128,7 +128,7 @@ export default function ClientDetails() {
                 <div>
                   <p className="text-sm font-medium text-slate-500 mb-1">Progresso Geral</p>
                   <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                    {client.progress}%
+                    {client.progresso}%
                   </p>
                 </div>
                 <div className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
@@ -136,10 +136,10 @@ export default function ClientDetails() {
                 </div>
               </div>
               <Progress
-                value={client.progress}
+                value={client.progresso}
                 className="h-3 bg-slate-200 dark:bg-slate-800"
                 indicatorClassName={cn(
-                  client.progress === 100 ? 'bg-emerald-500' : 'bg-indigo-600',
+                  client.progresso === 100 ? 'bg-emerald-500' : 'bg-indigo-600',
                 )}
               />
             </div>
@@ -151,7 +151,7 @@ export default function ClientDetails() {
               Objetivo Principal
             </h2>
             <p className="text-lg text-slate-700 dark:text-slate-300 leading-relaxed bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
-              {client.goal}
+              {client.objetivo_principal}
             </p>
           </Card>
         </div>
@@ -163,7 +163,7 @@ export default function ClientDetails() {
               Contexto do Cliente
             </h2>
             <div className="prose dark:prose-invert prose-slate text-slate-600 dark:text-slate-400">
-              <p className="whitespace-pre-wrap leading-relaxed">{client.context}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">{client.contexto}</p>
             </div>
           </Card>
         </div>

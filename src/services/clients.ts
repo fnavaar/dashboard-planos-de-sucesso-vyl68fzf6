@@ -1,26 +1,27 @@
 import pb from '@/lib/pocketbase/client'
 
-export interface Client {
+export interface Cliente {
   id: string
-  name: string
-  goal: string
-  context: string
-  status: 'Ativo' | 'Pausado' | 'Concluído'
-  start_date: string
-  progress: number
+  nome: string
+  objetivo_principal: string
+  contexto: string
+  status: 'ativo' | 'pausado' | 'concluido'
+  data_inicio: string
+  progresso: number
   user_id: string
   created: string
   updated: string
 }
 
-export const getClients = (filter?: string, sort?: string) =>
-  pb.collection('clients').getFullList<Client>({ filter, sort })
+export const getClientes = (filter?: string, sort?: string) =>
+  pb.collection('clientes').getFullList<Cliente>({ filter, sort })
 
-export const getClient = (id: string) => pb.collection('clients').getOne<Client>(id)
+export const getCliente = (id: string) => pb.collection('clientes').getOne<Cliente>(id)
 
-export const createClient = (data: Partial<Client>) => pb.collection('clients').create<Client>(data)
+export const createCliente = (data: Partial<Cliente>) =>
+  pb.collection('clientes').create<Cliente>(data)
 
-export const updateClient = (id: string, data: Partial<Client>) =>
-  pb.collection('clients').update<Client>(id, data)
+export const updateCliente = (id: string, data: Partial<Cliente>) =>
+  pb.collection('clientes').update<Cliente>(id, data)
 
-export const deleteClient = (id: string) => pb.collection('clients').delete(id)
+export const deleteCliente = (id: string) => pb.collection('clientes').delete(id)

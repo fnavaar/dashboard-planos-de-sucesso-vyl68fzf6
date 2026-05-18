@@ -21,15 +21,15 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
-import { createClient } from '@/services/clients'
+import { createCliente } from '@/services/clients'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 
 const formSchema = z.object({
-  name: z.string().min(1, 'Nome é obrigatório'),
-  goal: z.string().min(1, 'Objetivo é obrigatório'),
-  context: z.string().min(1, 'Contexto é obrigatório'),
-  start_date: z.date({
+  nome: z.string().min(1, 'Nome é obrigatório'),
+  objetivo_principal: z.string().min(1, 'Objetivo é obrigatório'),
+  contexto: z.string().min(1, 'Contexto é obrigatório'),
+  data_inicio: z.date({
     required_error: 'Data de início é obrigatória',
   }),
 })
@@ -42,21 +42,21 @@ export function NewClientModal() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
-      goal: '',
-      context: '',
+      nome: '',
+      objetivo_principal: '',
+      contexto: '',
     },
   })
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      await createClient({
-        name: values.name,
-        goal: values.goal,
-        context: values.context,
-        start_date: values.start_date.toISOString(),
-        status: 'Ativo',
-        progress: 0,
+      await createCliente({
+        nome: values.nome,
+        objetivo_principal: values.objetivo_principal,
+        contexto: values.contexto,
+        data_inicio: values.data_inicio.toISOString(),
+        status: 'ativo',
+        progresso: 0,
         user_id: user?.id,
       })
       toast({ title: 'Cliente criado com sucesso!' })
@@ -82,7 +82,7 @@ export function NewClientModal() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="name"
+              name="nome"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nome</FormLabel>
@@ -95,7 +95,7 @@ export function NewClientModal() {
             />
             <FormField
               control={form.control}
-              name="goal"
+              name="objetivo_principal"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Objetivo Principal</FormLabel>
@@ -108,7 +108,7 @@ export function NewClientModal() {
             />
             <FormField
               control={form.control}
-              name="context"
+              name="contexto"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Contexto</FormLabel>
@@ -121,7 +121,7 @@ export function NewClientModal() {
             />
             <FormField
               control={form.control}
-              name="start_date"
+              name="data_inicio"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Data de Início</FormLabel>

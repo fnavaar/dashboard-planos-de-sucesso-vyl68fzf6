@@ -8,6 +8,7 @@ import { NewClientProvider } from '@/contexts/NewClientContext'
 import Index from './pages/Index'
 import ClientDetails from './pages/ClientDetails'
 import Login from './pages/Login'
+import SignUp from './pages/SignUp'
 import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
 
@@ -27,6 +28,7 @@ const App = () => (
         <NewClientProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
             <Route
               element={
                 <ProtectedRoute>
