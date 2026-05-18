@@ -10,13 +10,34 @@ onRecordAfterUpdateSuccess((e) => {
       const clienteNome = cliente.getString('nome')
       const etapaTitulo = record.getString('titulo')
 
-      const payload = {
-        channel: $os.getenv('SLACK_CHANNEL') || '#planos-sucesso',
-        text: `✅ Etapa concluída! A etapa *${etapaTitulo}* do cliente *${clienteNome}* foi finalizada.`,
+      let oQueFoiFeito = 'Nenhum detalhe fornecido'
+      let passosSeguidos = 'Nenhum passo fornecido'
+
+      try {
+        const card = $app.findFirstRecordByData('cards_execucao', 'etapa_id', record.id)
+        if (card.getString('o_que_foi_feito')) {
+          oQueFoiFeito = card.getString('o_que_foi_feito')
+        }
+        if (card.getString('passos_seguidos')) {
+          passosSeguidos = card.getString('passos_seguidos')
+        }
+      } catch (_) {
+        // No execution card found, fallback to defaults
       }
 
-      const token = $secrets.get('SLACK_ACCESS_TOKEN') || ''
-      if (!token) return e.next()
+      const link = `https://dashboard-planos-de-sucesso-5bf75.goskip.app/cliente/${cliente.id}`
+      const text = `*✅ Etapa Finalizada:* ${etapaTitulo}\n*Cliente:* ${clienteNome}\n*Resumo da Execução:* ${oQueFoiFeito}\n*Passos Realizados:* ${passosSeguidos}\n*Link de Acesso:* ${link}`
+
+      const payload = {
+        channel: $os.getenv('SLACK_CHANNEL') || '#planos-sucesso',
+        text: text,
+      }
+
+      const token = $secrets.get('SLACK_ACCESS_TOKEN') || $secrets.get('SLACK_ACCESSS_TOKEN') || ''
+      if (!token) {
+        $app.logger().warn('Slack token not configured, skipping notification.')
+        return e.next()
+      }
 
       $http.send({
         url: 'https://slack.com/api/chat.postMessage',
