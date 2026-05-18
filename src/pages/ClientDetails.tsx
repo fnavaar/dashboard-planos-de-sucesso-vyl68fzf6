@@ -12,7 +12,8 @@ import { ClientHeader } from '@/components/ClientHeader'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { ProgressMap } from '@/components/ProgressMap'
 import { Confetti } from '@/components/Confetti'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
+import { ExecutionDrawer } from '@/components/ExecutionDrawer'
 
 export default function ClientDetails() {
   const { id } = useParams<{ id: string }>()
@@ -26,6 +27,9 @@ export default function ClientDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
+
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [selectedEtapa, setSelectedEtapa] = useState<Etapa | null>(null)
 
   const fetchData = useCallback(async () => {
     if (!id) return
@@ -154,10 +158,32 @@ export default function ClientDetails() {
                       </p>
                     </div>
                   </CardContent>
+                  <CardFooter className="pt-0 pb-4 flex justify-end">
+                    <Button
+                      variant={etapa.status === 'concluido' ? 'outline' : 'default'}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedEtapa(etapa)
+                        setDrawerOpen(true)
+                      }}
+                    >
+                      {etapa.status === 'concluido' ? 'Ver Execução' : 'Concluir / Log de Execução'}
+                    </Button>
+                  </CardFooter>
                 </Card>
               ))}
           </div>
         </div>
+      )}
+
+      {selectedEtapa && (
+        <ExecutionDrawer
+          etapa={selectedEtapa}
+          clientUserId={client.user_id}
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          onSaved={fetchData}
+        />
       )}
 
       <ProgressMap plano={plano} etapas={etapas} />

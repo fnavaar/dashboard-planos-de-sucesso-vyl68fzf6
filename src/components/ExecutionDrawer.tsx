@@ -10,7 +10,7 @@ import pb from '@/lib/pocketbase/client'
 
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useAuth } from '@/hooks/use-auth'
-import { Etapa } from '@/services/etapas'
+import { Etapa, updateEtapaStatus } from '@/services/etapas'
 import {
   getCardExecucaoByEtapa,
   createCardExecucao,
@@ -275,7 +275,11 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
         }
       }
 
-      toast.success('Dados salvos com sucesso', {
+      if (etapa.status !== 'concluido') {
+        await updateEtapaStatus(etapa.id, 'concluido')
+      }
+
+      toast.success('Dados salvos e etapa concluída com sucesso', {
         icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
       })
       onSaved()
@@ -544,7 +548,11 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
           </Button>
           {canEdit && (
             <Button type="submit" form="execution-form" disabled={!isDirty || saving}>
-              {saving ? 'Salvando...' : 'Salvar'}
+              {saving
+                ? 'Salvando...'
+                : etapa.status === 'concluido'
+                  ? 'Salvar Alterações'
+                  : 'Salvar e Concluir Etapa'}
             </Button>
           )}
         </div>
