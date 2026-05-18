@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Cliente } from '@/services/clients'
 import { Plano, generatePlan } from '@/services/planos'
 import { Etapa, updateEtapaStatus } from '@/services/etapas'
+import { ExecutionDrawer } from '@/components/ExecutionDrawer'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -108,6 +109,8 @@ export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Pro
     },
   ]
 
+  const [selectedEtapa, setSelectedEtapa] = useState<Etapa | null>(null)
+
   const ColumnContent = ({ status, color, border, title, text }: any) => {
     const isDragOver = dragOverCol === status
     return (
@@ -141,6 +144,7 @@ export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Pro
               etapa={etapa}
               onDragStart={handleDragStart}
               onMove={handleMove}
+              onClick={() => setSelectedEtapa(etapa)}
             />
           ))}
       </div>
@@ -160,6 +164,16 @@ export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Pro
           </div>
         ))}
       </div>
+
+      {selectedEtapa && (
+        <ExecutionDrawer
+          etapa={selectedEtapa}
+          clientUserId={client.user_id}
+          open={!!selectedEtapa}
+          onOpenChange={(open) => !open && setSelectedEtapa(null)}
+          onSaved={onUpdate}
+        />
+      )}
     </div>
   )
 }
@@ -168,10 +182,12 @@ function KanbanCard({
   etapa,
   onDragStart,
   onMove,
+  onClick,
 }: {
   etapa: Etapa
   onDragStart: (e: React.DragEvent, id: string) => void
   onMove: (id: string, status: Etapa['status']) => void
+  onClick: (etapa: Etapa) => void
 }) {
   const themeClasses = {
     a_fazer:
@@ -193,6 +209,7 @@ function KanbanCard({
     <Card
       draggable
       onDragStart={(e) => onDragStart(e, etapa.id)}
+      onClick={() => onClick(etapa)}
       className={cn(
         'p-4 cursor-grab active:cursor-grabbing hover:shadow-lg hover:scale-[1.02] transition-all duration-200 relative overflow-hidden group',
         themeClasses[etapa.status],
@@ -216,12 +233,13 @@ function KanbanCard({
             <Button
               variant="ghost"
               size="icon"
+              onClick={(e) => e.stopPropagation()}
               className="h-6 w-6 -mt-1 -mr-2 opacity-50 hover:opacity-100 flex-shrink-0 transition-opacity duration-200"
             >
               <ChevronDown className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             {etapa.status !== 'a_fazer' && (
               <DropdownMenuItem onClick={() => onMove(etapa.id, 'a_fazer')}>
                 Mover para A Fazer

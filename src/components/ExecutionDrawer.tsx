@@ -1,0 +1,484 @@
+import { useEffect, useState, useMemo } from 'react'
+import { useForm, useFieldArray } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { CalendarIcon, Plus, Trash2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { useMobile } from '@/hooks/use-mobile'
+import { useAuth } from '@/hooks/use-auth'
+import { Etapa } from '@/services/etapas'
+import {
+  getCardExecucaoByEtapa,
+  createCardExecucao,
+  updateCardExecucao,
+  CardExecucao,
+} from '@/services/cards_execucao'
+import { getUsers, User } from '@/services/users'
+
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer'
+import { Button } from '@/components/ui/button'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
+
+interface Props {
+  etapa: Etapa
+  clientUserId: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSaved: () => void
+}
+
+const formSchema = z.object({
+  o_que_foi_feito: z.string().min(1, 'Campo obrigatório'),
+  passos_seguidos: z.string().min(1, 'Campo obrigatório'),
+  como_foi_executado: z.string().min(1, 'Campo obrigatório'),
+  quando_foi_executado: z.date({ required_error: 'Campo obrigatório' }),
+  responsavel: z.string().min(1, 'Campo obrigatório'),
+  anexos: z.array(z.object({ url: z.string().url('URL inválida').or(z.string().length(0)) })),
+})
+
+type FormValues = z.infer<typeof formSchema>
+
+export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSaved }: Props) {
+  const isMobile = useMobile()
+  const { user } = useAuth()
+  const canEdit = user?.id === clientUserId
+
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(false)
+  const [record, setRecord] = useState<CardExecucao | null>(null)
+  const [usersList, setUsersList] = useState<User[]>([])
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      o_que_foi_feito: '',
+      passos_seguidos: '',
+      como_foi_executado: '',
+      responsavel: '',
+      anexos: [{ url: '' }],
+    },
+  })
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'anexos',
+  })
+
+  const fetchData = async () => {
+    if (!open) return
+    setLoading(true)
+    setError(false)
+    try {
+      const [uList, card] = await Promise.all([getUsers(), getCardExecucaoByEtapa(etapa.id)])
+      setUsersList(uList)
+      setRecord(card)
+
+      if (card) {
+        const defAnexos =
+          card.anexos && card.anexos.length > 0
+            ? card.anexos.map((url) => ({ url }))
+            : [{ url: '' }]
+
+        form.reset({
+          o_que_foi_feito: card.o_que_foi_feito || '',
+          passos_seguidos: card.passos_seguidos || '',
+          como_foi_executado: card.como_foi_executado || '',
+          quando_foi_executado: card.quando_foi_executado
+            ? new Date(card.quando_foi_executado)
+            : undefined,
+          responsavel: card.responsavel || '',
+          anexos: defAnexos,
+        })
+      } else {
+        form.reset()
+      }
+    } catch (e) {
+      setError(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etapa.id, open])
+
+  const [isDirty, setIsDirty] = useState(false)
+  const watched = form.watch()
+
+  const defaultValuesStr = useMemo(() => {
+    const defAnexos =
+      record?.anexos && record.anexos.length > 0
+        ? record.anexos.map((url) => ({ url }))
+        : [{ url: '' }]
+    return JSON.stringify({
+      o_que_foi_feito: record?.o_que_foi_feito || '',
+      passos_seguidos: record?.passos_seguidos || '',
+      como_foi_executado: record?.como_foi_executado || '',
+      quando_foi_executado: record?.quando_foi_executado
+        ? new Date(record.quando_foi_executado).toISOString()
+        : undefined,
+      responsavel: record?.responsavel || '',
+      anexos: defAnexos,
+    })
+  }, [record])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const currentStr = JSON.stringify({
+        ...watched,
+        quando_foi_executado: watched.quando_foi_executado?.toISOString(),
+      })
+      setIsDirty(currentStr !== defaultValuesStr)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [watched, defaultValuesStr])
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && isDirty) {
+      if (!window.confirm('Existem alterações não salvas. Deseja realmente sair?')) return
+    }
+    onOpenChange(newOpen)
+  }
+
+  const onSubmit = async (data: FormValues) => {
+    if (!canEdit) return
+    setSaving(true)
+    setSaveError(false)
+    try {
+      const payload = {
+        etapa_id: etapa.id,
+        o_que_foi_feito: data.o_que_foi_feito,
+        passos_seguidos: data.passos_seguidos,
+        como_foi_executado: data.como_foi_executado,
+        quando_foi_executado: data.quando_foi_executado.toISOString(),
+        responsavel: data.responsavel,
+        anexos: data.anexos.map((a) => a.url).filter((u) => u.trim() !== ''),
+      }
+
+      if (record?.id) {
+        await updateCardExecucao(record.id, payload)
+      } else {
+        await createCardExecucao(payload)
+      }
+      toast.success('Dados salvos com sucesso', {
+        icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+      })
+      onSaved()
+      onOpenChange(false)
+    } catch (e) {
+      setSaveError(true)
+      toast.error('Erro ao salvar. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const renderContent = () => {
+    if (error) {
+      return (
+        <div className="p-6 text-center flex-1 flex flex-col justify-center items-center">
+          <AlertCircle className="w-10 h-10 text-red-500 mb-4" />
+          <p className="text-slate-600 mb-4">Erro ao carregar dados. Tente novamente.</p>
+          <Button onClick={fetchData}>Tentar Novamente</Button>
+        </div>
+      )
+    }
+
+    if (loading) {
+      return (
+        <div className="p-6 space-y-6 flex-1 overflow-hidden pt-20">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      )
+    }
+
+    const isEmpty = !record
+
+    return (
+      <div className="flex flex-col h-full absolute inset-0 pt-16">
+        <div className="flex-1 overflow-y-auto p-6 pb-24">
+          {isEmpty && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 p-4 rounded-lg mb-6 text-sm border border-amber-200 dark:border-amber-800/50">
+              Nenhum dado preenchido ainda. Complete os campos abaixo.
+            </div>
+          )}
+
+          {saveError && (
+            <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 p-4 rounded-lg mb-6 text-sm flex items-center justify-between border border-red-200 dark:border-red-800/50">
+              <span>Erro ao salvar. Tente novamente.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onSubmit(form.getValues())}
+                disabled={saving}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+
+          <div className="mb-6">
+            <p className="text-sm font-semibold mb-1 text-slate-500">Objetivo da etapa</p>
+            <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-md text-sm text-slate-700 dark:text-slate-300">
+              {etapa.objetivo || 'Sem objetivo definido.'}
+            </div>
+          </div>
+
+          <Form {...form}>
+            <form id="execution-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="o_que_foi_feito"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>O que foi feito?</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Descreva o que foi realizado..."
+                        className="resize-none min-h-[100px]"
+                        disabled={!canEdit}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="passos_seguidos"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Passos seguidos</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="1. Primeiro passo...&#10;2. Segundo passo..."
+                        className="resize-none min-h-[100px]"
+                        disabled={!canEdit}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="como_foi_executado"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Como foi executado?</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Detalhes da execução, ferramentas utilizadas..."
+                        className="resize-none min-h-[100px]"
+                        disabled={!canEdit}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="quando_foi_executado"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel className="mb-2">Quando foi executado?</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={'outline'}
+                              disabled={!canEdit}
+                              className={cn(
+                                'w-full pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground',
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, 'PPP', { locale: ptBR })
+                              ) : (
+                                <span>Selecione uma data</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="responsavel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Responsável</FormLabel>
+                      <Select
+                        disabled={!canEdit}
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um usuário" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {usersList.map((u) => (
+                            <SelectItem key={u.id} value={u.id}>
+                              {u.name || u.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <FormLabel>Anexos / Evidências</FormLabel>
+                {fields.map((field, index) => (
+                  <FormField
+                    key={field.id}
+                    control={form.control}
+                    name={`anexos.${index}.url`}
+                    render={({ field: inputField }) => (
+                      <FormItem>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input placeholder="https://..." {...inputField} disabled={!canEdit} />
+                          </FormControl>
+                          {canEdit && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => remove(index)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+                {canEdit && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => append({ url: '' })}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Adicionar Link
+                  </Button>
+                )}
+              </div>
+            </form>
+          </Form>
+        </div>
+
+        <div className="border-t p-4 bg-white dark:bg-slate-950 flex justify-end gap-3 shrink-0 absolute bottom-0 left-0 right-0 z-10">
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
+            Cancelar
+          </Button>
+          {canEdit && (
+            <Button type="submit" form="execution-form" disabled={!isDirty || saving}>
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={handleOpenChange}>
+        <DrawerContent className="h-[90vh] flex flex-col">
+          <DrawerHeader className="absolute top-0 left-0 right-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm border-b">
+            <DrawerTitle>{etapa.titulo}</DrawerTitle>
+            <DrawerDescription className="sr-only">Detalhes da execução</DrawerDescription>
+          </DrawerHeader>
+          <div className="flex-1 overflow-hidden relative">{renderContent()}</div>
+        </DrawerContent>
+      </Drawer>
+    )
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent className="sm:max-w-[600px] flex flex-col gap-0 p-0">
+        <SheetHeader className="px-6 py-4 pr-12 border-b absolute top-0 left-0 right-0 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm">
+          <SheetTitle>{etapa.titulo}</SheetTitle>
+          <SheetDescription className="sr-only">Detalhes da execução</SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-hidden relative">{renderContent()}</div>
+      </SheetContent>
+    </Sheet>
+  )
+}
