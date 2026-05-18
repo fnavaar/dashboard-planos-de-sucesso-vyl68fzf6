@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CalendarIcon, Plus, Trash2, CheckCircle2, AlertCircle, Bot } from 'lucide-react'
+import { CalendarIcon, Plus, Trash2, CheckCircle2, AlertCircle, Bot, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
 
@@ -51,6 +51,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -103,17 +110,18 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     name: 'anexos',
   })
 
+  const [tldvModalOpen, setTldvModalOpen] = useState(false)
   const [tldvMeetingId, setTldvMeetingId] = useState('')
   const [importingTldv, setImportingTldv] = useState(false)
+  const [hasTldvImport, setHasTldvImport] = useState(false)
 
   const handleImportTldv = async () => {
-    if (!tldvMeetingId.trim()) {
-      toast.error('Informe o ID da reunião do TLDV.')
-      return
-    }
+    if (!tldvMeetingId.trim()) return
 
     setImportingTldv(true)
-    const toastId = toast.loading('Processando transcrição...')
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+
     try {
       const res = await pb.send('/backend/v1/fetch-tldv-transcript', {
         method: 'POST',
@@ -121,25 +129,44 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
           etapa_id: etapa.id,
           tldv_meeting_id: tldvMeetingId.trim(),
         }),
+        signal: controller.signal,
       })
 
-      if (res?.data) {
-        form.setValue('o_que_foi_feito', res.data.o_que_foi_feito || '')
-        form.setValue('como_foi_executado', res.data.como_foi_executado || '')
-        if (res.data.quando_foi_executado) {
-          form.setValue('quando_foi_executado', new Date(res.data.quando_foi_executado))
-        }
+      clearTimeout(timeoutId)
 
-        toast.success('Resumo importado com sucesso!', {
-          id: toastId,
-          icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
-        })
+      const data = res?.data || res
+      const resumo = data.resumo || data.o_que_foi_feito || ''
+      const metodologia = data.metodologia || data.como_foi_executado || ''
+      const dataHora = data.data_hora || data.quando_foi_executado
 
-        await fetchData()
+      if (resumo) form.setValue('o_que_foi_feito', resumo, { shouldDirty: true })
+      if (metodologia) form.setValue('como_foi_executado', metodologia, { shouldDirty: true })
+      if (dataHora) {
+        form.setValue('quando_foi_executado', new Date(dataHora), { shouldDirty: true })
       }
+
+      setHasTldvImport(true)
+      setTldvModalOpen(false)
+      toast.success('Dados carregados com sucesso!', {
+        icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+      })
     } catch (err: any) {
-      const msg = err?.response?.error || 'Erro ao importar do TLDV.'
-      toast.error(msg, { id: toastId })
+      clearTimeout(timeoutId)
+      if (err.name === 'AbortError' || err.isAbort) {
+        toast.error('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.', {
+          action: {
+            label: 'Retry',
+            onClick: () => handleImportTldv(),
+          },
+        })
+      } else {
+        toast.error('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.', {
+          action: {
+            label: 'Retry',
+            onClick: () => handleImportTldv(),
+          },
+        })
+      }
     } finally {
       setImportingTldv(false)
     }
@@ -238,11 +265,28 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
         anexos: data.anexos.map((a) => a.url).filter((u) => u.trim() !== ''),
       }
 
+      let savedRecord: CardExecucao
       if (record?.id) {
-        await updateCardExecucao(record.id, payload)
+        savedRecord = await updateCardExecucao(record.id, payload)
       } else {
-        await createCardExecucao(payload)
+        savedRecord = await createCardExecucao(payload)
       }
+
+      if (hasTldvImport && user?.id) {
+        try {
+          await pb.collection('historico_acoes').create({
+            user_id: user.id,
+            tabela: 'cards_execucao',
+            registro_id: savedRecord.id,
+            acao: record?.id ? 'update' : 'create',
+            dados_antes: record || {},
+            dados_depois: { ...savedRecord, source: 'Sincronização TLDV', note: 'TLDV Import' },
+          })
+        } catch (err) {
+          console.error('Erro ao salvar histórico do TLDV:', err)
+        }
+      }
+
       toast.success('Dados salvos com sucesso', {
         icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
       })
@@ -310,33 +354,6 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             </div>
           </div>
 
-          <div className="mb-6 bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
-            <h3 className="text-sm font-semibold text-indigo-900 dark:text-indigo-300 mb-2 flex items-center gap-2">
-              <Bot className="w-4 h-4" />
-              Preencher com IA (TLDV)
-            </h3>
-            <div className="flex gap-2">
-              <Input
-                placeholder="ID da reunião (ex: 123456...)"
-                value={tldvMeetingId}
-                onChange={(e) => setTldvMeetingId(e.target.value)}
-                disabled={!canEdit || importingTldv}
-                className="bg-white dark:bg-slate-900"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleImportTldv}
-                disabled={!canEdit || importingTldv}
-              >
-                {importingTldv ? 'Importando...' : 'Importar'}
-              </Button>
-            </div>
-            <p className="text-xs text-indigo-700/70 dark:text-indigo-400/70 mt-2">
-              Gera automaticamente um resumo das ações, ferramentas utilizadas e a data da reunião.
-            </p>
-          </div>
-
           <Form {...form}>
             <form id="execution-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
@@ -344,7 +361,21 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                 name="o_que_foi_feito"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>O que foi feito?</FormLabel>
+                    <div className="flex items-center justify-between mb-2">
+                      <FormLabel className="mb-0">O que foi feito?</FormLabel>
+                      {canEdit && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setTldvModalOpen(true)}
+                          className="h-8 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:text-indigo-400 dark:border-indigo-800 dark:hover:bg-indigo-950"
+                        >
+                          <Bot className="w-3.5 h-3.5 mr-1.5" />
+                          Carregar do TLDV
+                        </Button>
+                      )}
+                    </div>
                     <FormControl>
                       <Textarea
                         placeholder="Descreva o que foi realizado..."
@@ -522,6 +553,45 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             </Button>
           )}
         </div>
+
+        <Dialog open={tldvModalOpen} onOpenChange={setTldvModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Importar da Reunião TLDV</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <FormLabel>ID da Reunião TLDV</FormLabel>
+                <Input
+                  placeholder="Ex: 123456..."
+                  value={tldvMeetingId}
+                  onChange={(e) => setTldvMeetingId(e.target.value)}
+                  disabled={importingTldv}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setTldvModalOpen(false)}
+                disabled={importingTldv}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleImportTldv} disabled={!tldvMeetingId.trim() || importingTldv}>
+                {importingTldv ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Carregando transcrição do TLDV...
+                  </>
+                ) : (
+                  'Carregar'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }
