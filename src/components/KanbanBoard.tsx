@@ -2,17 +2,37 @@ import { useState } from 'react'
 import { Cliente } from '@/services/clients'
 import { Plano } from '@/services/planos'
 import { Etapa, updateEtapaStatus } from '@/services/etapas'
-import { ExecutionDrawer } from '@/components/ExecutionDrawer'
+import {
+  CardExecucao,
+  updateCardExecucao,
+  createCardExecucao,
+  deleteCardExecucao,
+} from '@/services/cards_execucao'
 import { GeneratePlanDialog } from '@/components/GeneratePlanDialog'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu'
-import { Sparkles, CheckCircle2, Circle, Loader2, ChevronDown, Clock } from 'lucide-react'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Sparkles,
+  Plus,
+  Loader2,
+  Calendar,
+  User,
+  AlignLeft,
+  CheckCircle2,
+  ChevronRight,
+  Trash2,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -20,38 +40,57 @@ interface Props {
   client: Cliente
   plano: Plano | null
   etapas: Etapa[]
+  cards: CardExecucao[]
   onUpdate: () => void
   onConfetti: () => void
 }
 
-export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Props) {
+export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti }: Props) {
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
+  const [editingCard, setEditingCard] = useState<CardExecucao | null>(null)
+  const [addingToEtapa, setAddingToEtapa] = useState<string | null>(null)
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('text/plain', id)
   }
 
-  const handleDrop = async (e: React.DragEvent, status: Etapa['status']) => {
+  const handleDrop = async (e: React.DragEvent, etapaId: string) => {
     e.preventDefault()
     setDragOverCol(null)
     const id = e.dataTransfer.getData('text/plain')
     if (!id) return
-    await handleMove(id, status)
-  }
 
-  const handleMove = async (id: string, status: Etapa['status']) => {
-    const etapa = etapas.find((e) => e.id === id)
-    if (etapa && etapa.status !== status) {
-      if (status === 'concluido') onConfetti()
+    const card = cards.find((c) => c.id === id)
+    if (card && card.etapa_id !== etapaId) {
       try {
-        await updateEtapaStatus(id, status)
+        await updateCardExecucao(id, { etapa_id: etapaId })
+        onUpdate()
       } catch (err) {
-        toast.error('Erro ao mover etapa')
+        toast.error('Erro ao mover a tarefa')
       }
     }
   }
 
-  const [selectedEtapa, setSelectedEtapa] = useState<Etapa | null>(null)
+  const handleToggleCard = async (card: CardExecucao, completed: boolean) => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      await updateCardExecucao(card.id, { quando_foi_executado: completed ? today : '' })
+      onUpdate()
+    } catch (err) {
+      toast.error('Erro ao atualizar tarefa')
+    }
+  }
+
+  const handleCompleteEtapa = async (etapaId: string) => {
+    try {
+      await updateEtapaStatus(etapaId, 'concluido')
+      onConfetti()
+      onUpdate()
+      toast.success('Fase concluída!')
+    } catch (err) {
+      toast.error('Erro ao concluir fase')
+    }
+  }
 
   if (!plano) {
     return (
@@ -79,205 +118,308 @@ export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Pro
     )
   }
 
-  const cols = [
-    {
-      id: 'a_fazer' as const,
-      title: 'A Fazer',
-      color: 'bg-slate-100/60 dark:bg-slate-800/50',
-      border: 'border-slate-200 dark:border-slate-700',
-      text: 'text-slate-700 dark:text-slate-300',
-    },
-    {
-      id: 'em_progresso' as const,
-      title: 'Em Progresso',
-      color: 'bg-amber-50/60 dark:bg-amber-900/20',
-      border: 'border-amber-200 dark:border-amber-800',
-      text: 'text-amber-800 dark:text-amber-400',
-    },
-    {
-      id: 'concluido' as const,
-      title: 'Concluído',
-      color: 'bg-emerald-50/60 dark:bg-emerald-900/20',
-      border: 'border-emerald-200 dark:border-emerald-800',
-      text: 'text-emerald-800 dark:text-emerald-400',
-    },
-  ]
-
-  const ColumnContent = ({ status, color, border, title, text }: any) => {
-    const isDragOver = dragOverCol === status
-    return (
-      <div
-        className={cn(
-          'rounded-xl p-4 min-h-[500px] flex flex-col gap-3 border-2 transition-all duration-200',
-          isDragOver
-            ? 'border-dashed border-indigo-400 bg-indigo-50/50 scale-[1.01]'
-            : `border-solid ${border} ${color}`,
-        )}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragOverCol(status)
-        }}
-        onDragLeave={() => setDragOverCol(null)}
-        onDrop={(e) => handleDrop(e, status)}
-      >
-        <div className="flex items-center gap-2 mb-2 px-1">
-          <h3 className={cn('font-bold', text)}>{title}</h3>
-          <span className="ml-auto bg-white/60 dark:bg-slate-800 px-2 text-xs font-semibold rounded-full text-slate-500 dark:text-slate-400">
-            {etapas.filter((e) => e.status === status).length}
-          </span>
-        </div>
-
-        {etapas
-          .filter((e) => e.status === status)
-          .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
-          .map((etapa) => (
-            <KanbanCard
-              key={etapa.id}
-              etapa={etapa}
-              onDragStart={handleDragStart}
-              onMove={handleMove}
-              onClick={() => setSelectedEtapa(etapa)}
-            />
-          ))}
-      </div>
-    )
-  }
+  const sortedEtapas = [...etapas].sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
 
   return (
     <div className="bg-slate-50 dark:bg-slate-900/20 p-4 md:p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-200">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Plano de Execução</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Jornada de Execução</h2>
       </div>
 
-      <div className="flex md:grid md:grid-cols-3 gap-6 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
-        {cols.map((c) => (
-          <div key={c.id} className="min-w-[85vw] sm:min-w-[320px] md:min-w-0 snap-center shrink-0">
-            <ColumnContent {...c} />
-          </div>
-        ))}
+      <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory hide-scrollbar">
+        {sortedEtapas.map((etapa) => {
+          const isDragOver = dragOverCol === etapa.id
+          const colCards = cards.filter((c) => c.etapa_id === etapa.id)
+          const completedCards = colCards.filter((c) => !!c.quando_foi_executado)
+          const isAllCompleted = colCards.length === 0 || completedCards.length === colCards.length
+          const isEtapaConcluida = etapa.status === 'concluido'
+
+          return (
+            <div
+              key={etapa.id}
+              id={`kanban-col-${etapa.id}`}
+              className="min-w-[85vw] sm:min-w-[320px] md:min-w-[340px] snap-center shrink-0"
+            >
+              <div
+                className={cn(
+                  'rounded-xl p-4 min-h-[500px] flex flex-col gap-3 border-2 transition-all duration-200',
+                  isDragOver
+                    ? 'border-dashed border-indigo-400 bg-indigo-50/50 scale-[1.01]'
+                    : isEtapaConcluida
+                      ? 'border-solid border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-900/10'
+                      : 'border-solid border-slate-200 bg-slate-100/60 dark:border-slate-700 dark:bg-slate-800/50',
+                )}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOverCol(etapa.id)
+                }}
+                onDragLeave={() => setDragOverCol(null)}
+                onDrop={(e) => handleDrop(e, etapa.id)}
+              >
+                <div className="flex flex-col gap-1 mb-2 px-1">
+                  <div className="flex items-center justify-between">
+                    <h3
+                      className="font-bold text-slate-700 dark:text-slate-300 line-clamp-1"
+                      title={etapa.titulo}
+                    >
+                      {etapa.titulo}
+                    </h3>
+                    <span className="ml-2 bg-white/60 dark:bg-slate-800 px-2 py-0.5 text-xs font-semibold rounded-full text-slate-500 dark:text-slate-400 shrink-0">
+                      {completedCards.length}/{colCards.length}
+                    </span>
+                  </div>
+                  {isEtapaConcluida && (
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Fase Concluída
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-3 flex-1 overflow-y-auto min-h-0">
+                  {colCards.map((card) => (
+                    <TaskCard
+                      key={card.id}
+                      card={card}
+                      onDragStart={handleDragStart}
+                      onEdit={() => setEditingCard(card)}
+                      onToggle={(completed) => handleToggleCard(card, completed)}
+                    />
+                  ))}
+
+                  {!isEtapaConcluida && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setAddingToEtapa(etapa.id)}
+                      className="w-full mt-2 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:bg-slate-200/50 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-300 shrink-0"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Nova Tarefa
+                    </Button>
+                  )}
+                </div>
+
+                {!isEtapaConcluida && isAllCompleted && (
+                  <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 animate-fade-in-up shrink-0">
+                    <Button
+                      onClick={() => handleCompleteEtapa(etapa.id)}
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md group transition-all"
+                    >
+                      Concluir Fase
+                      <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
-      {selectedEtapa && (
-        <ExecutionDrawer
-          etapa={selectedEtapa}
-          clientUserId={client.user_id}
-          open={!!selectedEtapa}
-          onOpenChange={(open) => !open && setSelectedEtapa(null)}
-          onSaved={onUpdate}
-        />
-      )}
+      <TaskDialog
+        card={editingCard}
+        etapaId={addingToEtapa}
+        open={!!editingCard || !!addingToEtapa}
+        onClose={() => {
+          setEditingCard(null)
+          setAddingToEtapa(null)
+        }}
+        onSave={() => {
+          setEditingCard(null)
+          setAddingToEtapa(null)
+          onUpdate()
+        }}
+      />
     </div>
   )
 }
 
-function KanbanCard({
-  etapa,
+function TaskCard({
+  card,
   onDragStart,
-  onMove,
-  onClick,
+  onEdit,
+  onToggle,
 }: {
-  etapa: Etapa
+  card: CardExecucao
   onDragStart: (e: React.DragEvent, id: string) => void
-  onMove: (id: string, status: Etapa['status']) => void
-  onClick: (etapa: Etapa) => void
+  onEdit: () => void
+  onToggle: (completed: boolean) => void
 }) {
-  const themeClasses = {
-    a_fazer:
-      'bg-white border-slate-200 text-slate-800 dark:bg-slate-950 dark:border-slate-700 dark:text-slate-200',
-    em_progresso:
-      'bg-amber-50/80 border-amber-300 text-amber-900 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-100',
-    concluido:
-      'bg-emerald-50/80 border-emerald-300 text-emerald-900 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-100',
-  }
-
-  const StatusIcon =
-    {
-      a_fazer: Circle,
-      em_progresso: Loader2,
-      concluido: CheckCircle2,
-    }[etapa.status] || Circle
+  const isCompleted = !!card.quando_foi_executado
 
   return (
     <Card
-      id={`kanban-card-${etapa.id}`}
       draggable
-      onDragStart={(e) => onDragStart(e, etapa.id)}
-      onClick={() => onClick(etapa)}
+      onDragStart={(e) => onDragStart(e, card.id)}
       className={cn(
-        'p-4 cursor-grab active:cursor-grabbing hover:shadow-lg hover:scale-[1.02] transition-all duration-200 relative overflow-hidden group scroll-m-24',
-        themeClasses[etapa.status],
+        'p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 relative overflow-hidden group shrink-0',
+        isCompleted
+          ? 'bg-slate-50 border-slate-200/50 opacity-75 dark:bg-slate-900/50 dark:border-slate-800'
+          : 'bg-white border-slate-200 dark:bg-slate-950 dark:border-slate-700',
       )}
     >
-      <div className="flex justify-between items-start mb-2 gap-2">
-        <div className="flex items-start gap-2">
-          <StatusIcon
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">
+          <Checkbox
+            checked={isCompleted}
+            onCheckedChange={(c) => onToggle(c as boolean)}
             className={cn(
-              'w-4 h-4 mt-0.5 shrink-0 transition-all duration-200',
-              etapa.status === 'a_fazer' && 'text-slate-400',
-              etapa.status === 'em_progresso' && 'text-amber-500 animate-spin',
-              etapa.status === 'concluido' && 'text-emerald-500',
+              isCompleted &&
+                'data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500',
             )}
           />
-          <h4 className="font-semibold text-sm leading-snug">{etapa.titulo}</h4>
         </div>
+        <div className="flex-1 cursor-pointer min-w-0" onClick={onEdit}>
+          <p
+            className={cn(
+              'text-sm font-medium line-clamp-2 break-words leading-tight',
+              isCompleted && 'line-through text-slate-400 dark:text-slate-500',
+              !isCompleted && 'text-slate-800 dark:text-slate-200',
+            )}
+          >
+            {card.o_que_foi_feito || 'Tarefa sem título'}
+          </p>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => e.stopPropagation()}
-              className="h-6 w-6 -mt-1 -mr-2 opacity-50 hover:opacity-100 flex-shrink-0 transition-opacity duration-200"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            {etapa.status !== 'a_fazer' && (
-              <DropdownMenuItem onClick={() => onMove(etapa.id, 'a_fazer')}>
-                Mover para A Fazer
-              </DropdownMenuItem>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            {card.responsavel && (
+              <span className="flex items-center text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                <User className="w-3 h-3 mr-1" /> {card.responsavel}
+              </span>
             )}
-            {etapa.status !== 'em_progresso' && (
-              <DropdownMenuItem onClick={() => onMove(etapa.id, 'em_progresso')}>
-                Mover para Em Progresso
-              </DropdownMenuItem>
+            {card.passos_seguidos && (
+              <span className="flex items-center text-[10px] text-slate-500 dark:text-slate-400">
+                <AlignLeft className="w-3 h-3 mr-1" /> Detalhes
+              </span>
             )}
-            {etapa.status !== 'concluido' && (
-              <DropdownMenuItem onClick={() => onMove(etapa.id, 'concluido')}>
-                Mover para Concluído
-              </DropdownMenuItem>
+            {card.quando_foi_executado && (
+              <span className="flex items-center text-[10px] text-emerald-600 dark:text-emerald-400">
+                <Calendar className="w-3 h-3 mr-1" />{' '}
+                {new Date(card.quando_foi_executado).toLocaleDateString('pt-BR')}
+              </span>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <p
-        className={cn(
-          'text-xs mb-4 line-clamp-2 ml-6',
-          etapa.status === 'a_fazer'
-            ? 'text-slate-500 dark:text-slate-400'
-            : etapa.status === 'em_progresso'
-              ? 'text-amber-700/80 dark:text-amber-200/70'
-              : 'text-emerald-700/80 dark:text-emerald-200/70',
-        )}
-        title={etapa.descricao}
-      >
-        {etapa.descricao}
-      </p>
-      <div className="flex items-center justify-between mt-auto ml-6">
-        <span
-          className={cn(
-            'flex items-center gap-1 border px-2 py-1 rounded-md text-[10px] font-medium transition-colors duration-200',
-            etapa.status === 'a_fazer'
-              ? 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400'
-              : etapa.status === 'em_progresso'
-                ? 'bg-amber-100/50 text-amber-700 border-amber-200 dark:bg-amber-900/50 dark:border-amber-800 dark:text-amber-300'
-                : 'bg-emerald-100/50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/50 dark:border-emerald-800 dark:text-emerald-300',
-          )}
-        >
-          <Clock className="w-3 h-3" /> {etapa.tempo_estimado || 'N/D'}
-        </span>
+          </div>
+        </div>
       </div>
     </Card>
+  )
+}
+
+function TaskDialog({
+  card,
+  etapaId,
+  open,
+  onClose,
+  onSave,
+}: {
+  card: CardExecucao | null
+  etapaId: string | null
+  open: boolean
+  onClose: () => void
+  onSave: () => void
+}) {
+  const [loading, setLoading] = useState(false)
+  const isEditing = !!card
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+    const formData = new FormData(e.currentTarget)
+
+    const data = {
+      o_que_foi_feito: formData.get('o_que_foi_feito') as string,
+      passos_seguidos: formData.get('passos_seguidos') as string,
+      responsavel: formData.get('responsavel') as string,
+    }
+
+    try {
+      if (isEditing && card) {
+        await updateCardExecucao(card.id, data)
+        toast.success('Tarefa atualizada')
+      } else if (etapaId) {
+        await createCardExecucao({ ...data, etapa_id: etapaId })
+        toast.success('Tarefa criada')
+      }
+      onSave()
+    } catch (err) {
+      toast.error('Erro ao salvar tarefa')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!card) return
+    if (!confirm('Deseja realmente excluir esta tarefa?')) return
+    setLoading(true)
+    try {
+      await deleteCardExecucao(card.id)
+      toast.success('Tarefa excluída')
+      onSave()
+    } catch (err) {
+      toast.error('Erro ao excluir tarefa')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>{isEditing ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="o_que_foi_feito">Título da Tarefa</Label>
+              <Input
+                id="o_que_foi_feito"
+                name="o_que_foi_feito"
+                defaultValue={card?.o_que_foi_feito || ''}
+                placeholder="Ex: Enviar e-mail de boas vindas"
+                required
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="responsavel">Responsável</Label>
+              <Input
+                id="responsavel"
+                name="responsavel"
+                defaultValue={card?.responsavel || ''}
+                placeholder="Ex: João Silva"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="passos_seguidos">Detalhes / Passos</Label>
+              <Textarea
+                id="passos_seguidos"
+                name="passos_seguidos"
+                defaultValue={card?.passos_seguidos || ''}
+                rows={4}
+                placeholder="Descreva o que precisa ser feito..."
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            {isEditing ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={loading}
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Excluir
+              </Button>
+            ) : (
+              <div />
+            )}
+            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {isEditing ? 'Salvar Alterações' : 'Criar Tarefa'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

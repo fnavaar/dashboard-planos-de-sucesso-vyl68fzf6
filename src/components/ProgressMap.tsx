@@ -107,20 +107,23 @@ export function ProgressMap({ plano, etapas }: Props) {
   }
 
   const handleStepClick = (id: string) => {
-    const el = document.getElementById(`kanban-card-${id}`)
+    const el = document.getElementById(`kanban-col-${id}`)
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      el.click()
-      el.classList.add(
-        'ring-4',
-        'ring-indigo-500',
-        'ring-offset-2',
-        'transition-all',
-        'duration-500',
-      )
-      setTimeout(() => {
-        el.classList.remove('ring-4', 'ring-indigo-500', 'ring-offset-2')
-      }, 2000)
+      el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+
+      const card = el.firstElementChild
+      if (card) {
+        card.classList.add(
+          'ring-4',
+          'ring-indigo-500',
+          'ring-offset-2',
+          'transition-all',
+          'duration-500',
+        )
+        setTimeout(() => {
+          card.classList.remove('ring-4', 'ring-indigo-500', 'ring-offset-2')
+        }, 2000)
+      }
     }
   }
 

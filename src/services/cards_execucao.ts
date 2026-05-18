@@ -22,10 +22,20 @@ export async function getCardExecucaoByEtapa(etapaId: string): Promise<CardExecu
   }
 }
 
+export async function getCardsExecucao(etapaIds: string[]): Promise<CardExecucao[]> {
+  if (etapaIds.length === 0) return []
+  const filter = etapaIds.map((id) => `etapa_id="${id}"`).join(' || ')
+  return pb.collection('cards_execucao').getFullList<CardExecucao>({ filter })
+}
+
 export async function createCardExecucao(data: Partial<CardExecucao>) {
   return pb.collection('cards_execucao').create<CardExecucao>(data)
 }
 
 export async function updateCardExecucao(id: string, data: Partial<CardExecucao>) {
   return pb.collection('cards_execucao').update<CardExecucao>(id, data)
+}
+
+export async function deleteCardExecucao(id: string) {
+  return pb.collection('cards_execucao').delete(id)
 }

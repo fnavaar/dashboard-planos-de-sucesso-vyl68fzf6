@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getCliente, Cliente } from '@/services/clients'
 import { getPlanos, Plano } from '@/services/planos'
 import { getEtapas, Etapa } from '@/services/etapas'
+import { getCardsExecucao, CardExecucao } from '@/services/cards_execucao'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ArrowLeft, Target, BookOpen } from 'lucide-react'
@@ -20,6 +21,7 @@ export default function ClientDetails() {
   const [client, setClient] = useState<Cliente | null>(null)
   const [plano, setPlano] = useState<Plano | null>(null)
   const [etapas, setEtapas] = useState<Etapa[]>([])
+  const [cards, setCards] = useState<CardExecucao[]>([])
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -36,9 +38,17 @@ export default function ClientDetails() {
         setPlano(ps[0])
         const es = await getEtapas(ps[0].id)
         setEtapas(es)
+
+        if (es.length > 0) {
+          const cs = await getCardsExecucao(es.map((e) => e.id))
+          setCards(cs)
+        } else {
+          setCards([])
+        }
       } else {
         setPlano(null)
         setEtapas([])
+        setCards([])
       }
     } catch (err) {
       setError(true)
@@ -54,6 +64,7 @@ export default function ClientDetails() {
   useRealtime('etapas', () => fetchData())
   useRealtime('planos', () => fetchData())
   useRealtime('clientes', () => fetchData())
+  useRealtime('cards_execucao', () => fetchData())
 
   if (loading && !client) return <LoadingState />
   if (error || !client) return <ErrorState onBack={() => navigate('/')} />
@@ -155,6 +166,7 @@ export default function ClientDetails() {
         client={client}
         plano={plano}
         etapas={etapas}
+        cards={cards}
         onUpdate={fetchData}
         onConfetti={() => {
           setShowConfetti(true)
