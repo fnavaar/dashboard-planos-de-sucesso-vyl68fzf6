@@ -114,11 +114,13 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const [tldvMeetingId, setTldvMeetingId] = useState('')
   const [importingTldv, setImportingTldv] = useState(false)
   const [hasTldvImport, setHasTldvImport] = useState(false)
+  const [tldvError, setTldvError] = useState<string | null>(null)
 
   const handleImportTldv = async () => {
     if (!tldvMeetingId.trim()) return
 
     setImportingTldv(true)
+    setTldvError(null)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 10000)
 
@@ -152,21 +154,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
       })
     } catch (err: any) {
       clearTimeout(timeoutId)
-      if (err.name === 'AbortError' || err.isAbort) {
-        toast.error('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.', {
-          action: {
-            label: 'Retry',
-            onClick: () => handleImportTldv(),
-          },
-        })
-      } else {
-        toast.error('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.', {
-          action: {
-            label: 'Retry',
-            onClick: () => handleImportTldv(),
-          },
-        })
-      }
+      setTldvError('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.')
     } finally {
       setImportingTldv(false)
     }
@@ -362,7 +350,14 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex items-center justify-between mb-2">
-                      <FormLabel className="mb-0">O que foi feito?</FormLabel>
+                      <FormLabel className="mb-0 flex items-center gap-2">
+                        O que foi feito?
+                        {hasTldvImport && (
+                          <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-400/10 dark:text-indigo-400 dark:ring-indigo-400/30">
+                            Importado via TLDV
+                          </span>
+                        )}
+                      </FormLabel>
                       {canEdit && (
                         <Button
                           type="button"
@@ -565,13 +560,31 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                 <Input
                   placeholder="Ex: 123456..."
                   value={tldvMeetingId}
-                  onChange={(e) => setTldvMeetingId(e.target.value)}
+                  onChange={(e) => {
+                    setTldvMeetingId(e.target.value)
+                    if (tldvError) setTldvError(null)
+                  }}
                   disabled={importingTldv}
                   autoFocus
                 />
               </div>
+              {tldvError && (
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400 p-3 rounded-md text-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-red-200 dark:border-red-800/50">
+                  <span className="flex-1">{tldvError}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleImportTldv}
+                    disabled={importingTldv}
+                    className="shrink-0"
+                  >
+                    Tentar novamente
+                  </Button>
+                </div>
+              )}
             </div>
             <DialogFooter>
+              {' '}
               <Button
                 variant="outline"
                 onClick={() => setTldvModalOpen(false)}
