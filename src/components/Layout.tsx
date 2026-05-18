@@ -11,6 +11,24 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Plus, User, LogOut } from 'lucide-react'
 import { useNewClient } from '@/contexts/NewClientContext'
 import { NewClientModal } from '@/components/NewClientModal'
+import { useTheme } from 'next-themes'
+import { Moon, Sun } from 'lucide-react'
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      className="rounded-full w-9 h-9 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+    >
+      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+      <span className="sr-only">Toggle theme</span>
+    </Button>
+  )
+}
 
 export default function Layout() {
   const { user, signOut } = useAuth()
@@ -33,17 +51,19 @@ export default function Layout() {
           <div className="flex items-center gap-4">
             <Button
               onClick={() => setIsOpen(true)}
-              className="hidden sm:flex bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl font-bold"
+              className="hidden sm:flex bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl font-bold dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:hover:from-yellow-500 dark:hover:to-amber-700 dark:hover:shadow-amber-500/40"
             >
               <Plus className="w-5 h-5 mr-2 stroke-[3]" /> Novo Cliente
             </Button>
             <Button
               onClick={() => setIsOpen(true)}
               size="icon"
-              className="sm:hidden bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl"
+              className="sm:hidden bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:hover:from-yellow-500 dark:hover:to-amber-700 dark:hover:shadow-amber-500/40"
             >
               <Plus className="w-5 h-5 stroke-[3]" />
             </Button>
+
+            <ThemeToggle />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

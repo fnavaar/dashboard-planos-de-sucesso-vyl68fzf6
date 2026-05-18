@@ -108,7 +108,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
             onConfetti()
           }}
           trigger={
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200 dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:hover:from-yellow-500 dark:hover:to-amber-700 dark:font-bold">
               Gerar Plano com IA
               <Sparkles className="w-5 h-5 ml-2" />
             </Button>
@@ -126,7 +126,10 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Jornada de Execução</h2>
       </div>
 
-      <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory hide-scrollbar">
+      <div
+        className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scroll-smooth"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {sortedEtapas.map((etapa) => {
           const isDragOver = dragOverCol === etapa.id
           const colCards = cards.filter((c) => c.etapa_id === etapa.id)
@@ -190,7 +193,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                     <Button
                       variant="ghost"
                       onClick={() => setAddingToEtapa(etapa.id)}
-                      className="w-full mt-2 border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 hover:bg-slate-200/50 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-300 shrink-0"
+                      className="w-full mt-2 border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-200/50 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-gradient-to-r dark:hover:from-slate-300 dark:hover:to-slate-400 dark:hover:text-slate-900 dark:hover:border-solid dark:hover:border-transparent shrink-0 transition-all"
                     >
                       <Plus className="w-4 h-4 mr-2" /> Nova Tarefa
                     </Button>
@@ -201,7 +204,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                   <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 animate-fade-in-up shrink-0">
                     <Button
                       onClick={() => handleCompleteEtapa(etapa.id)}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md group transition-all"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md group transition-all dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:hover:from-yellow-500 dark:hover:to-amber-700 dark:font-bold"
                     >
                       Concluir Fase
                       <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />

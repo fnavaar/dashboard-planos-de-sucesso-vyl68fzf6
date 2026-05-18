@@ -25,7 +25,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Clock, PauseCircle, CheckCircle2, TrendingUp, CalendarDays, Edit } from 'lucide-react'
+import {
+  Clock,
+  PauseCircle,
+  CheckCircle2,
+  TrendingUp,
+  CalendarDays,
+  Edit,
+  Sparkles,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -82,6 +90,14 @@ export function ClientHeader({ client, plano, etapas, onUpdate, onConfetti }: Pr
                         onUpdate()
                         onConfetti()
                       }}
+                      trigger={
+                        <Button
+                          size="sm"
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all duration-200 dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:font-bold dark:hover:from-yellow-500 dark:hover:to-amber-700"
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" /> Gerar Plano com IA
+                        </Button>
+                      }
                     />
                   )}
                 </div>
@@ -164,7 +180,7 @@ function EditClientDialog({ client, onUpdate }: { client: Cliente; onUpdate: () 
         <Button
           variant="secondary"
           size="sm"
-          className="bg-white/20 hover:bg-white/30 text-white border-none shadow-sm transition-all duration-200"
+          className="bg-white/20 hover:bg-white/30 text-white border-none shadow-sm transition-all duration-200 dark:bg-gradient-to-r dark:from-slate-300 dark:to-slate-400 dark:text-slate-900 dark:font-bold dark:hover:from-slate-400 dark:hover:to-slate-500"
         >
           <Edit className="w-4 h-4 mr-2" /> Editar
         </Button>
