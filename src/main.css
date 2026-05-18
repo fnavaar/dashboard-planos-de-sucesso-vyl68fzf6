@@ -64,7 +64,7 @@
   }
 
   .dark {
-    /* Gamified theme dark mode */
+    /* Premium Gamified theme dark mode - Gold & Silver */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
@@ -74,35 +74,38 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 238 82% 67%;
-    --primary-foreground: 210 40% 98%;
+    /* Gold */
+    --primary: 43 74% 49%;
+    --primary-foreground: 222.2 84% 4.9%;
 
-    --secondary: 330 81% 60%;
-    --secondary-foreground: 210 40% 98%;
+    /* Silver */
+    --secondary: 210 16% 76%;
+    --secondary-foreground: 222.2 84% 4.9%;
 
     --muted: 222.2 84% 4.9%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 222.2 84% 4.9%;
-    --accent-foreground: 210 40% 98%;
+    /* Silver/Platinum for accents */
+    --accent: 210 16% 76%;
+    --accent-foreground: 222.2 84% 4.9%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 222.2 84% 4.9%;
     --input: 222.2 84% 4.9%;
-    --ring: 238 82% 67%;
+    --ring: 43 74% 49%;
     --sidebar-background: 222.2 84% 4.9%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 222.2 84% 4.9%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222.2 84% 4.9%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-primary: 43 74% 49%;
+    --sidebar-primary-foreground: 222.2 84% 4.9%;
+    --sidebar-accent: 210 16% 76%;
+    --sidebar-accent-foreground: 222.2 84% 4.9%;
     --sidebar-border: 222.2 84% 4.9%;
-    --sidebar-ring: 222.2 84% 4.9%;
+    --sidebar-ring: 43 74% 49%;
 
-    --chart-1: 270 100% 44%;
-    --chart-2: 164 100% 38%;
+    --chart-1: 43 74% 49%;
+    --chart-2: 210 16% 76%;
     --chart-3: 43 100% 32%;
     --chart-4: 340 100% 50%;
     --chart-5: 10 100% 50%;
@@ -298,8 +301,8 @@
 
   /* Sleek custom scrollbar for kanban and application */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -309,12 +312,23 @@
     border-radius: 10px;
   }
   .dark ::-webkit-scrollbar-thumb {
-    background: #475569;
+    background: hsl(var(--secondary));
   }
   ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: #64748b;
+    background: hsl(var(--primary));
+  }
+
+  .kanban-scroll::-webkit-scrollbar {
+    height: 10px;
+  }
+  .kanban-scroll::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+  }
+  .dark .kanban-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
   }
 }

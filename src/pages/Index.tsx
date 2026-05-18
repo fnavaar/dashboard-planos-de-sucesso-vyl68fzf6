@@ -150,8 +150,11 @@ export default function Index() {
           <div className="md:hidden">
             <Drawer>
               <DrawerTrigger asChild>
-                <Button variant="outline" className="rounded-xl font-bold h-12 border-2">
-                  <Filter className="w-5 h-5 mr-2 text-indigo-500" /> Filtros
+                <Button
+                  variant="outline"
+                  className="rounded-xl font-bold h-12 border-2 dark:border-secondary dark:text-secondary dark:hover:bg-secondary/20"
+                >
+                  <Filter className="w-5 h-5 mr-2 text-indigo-500 dark:text-primary" /> Filtros
                 </Button>
               </DrawerTrigger>
               <DrawerContent>
@@ -211,7 +214,7 @@ export default function Index() {
             </p>
             <Button
               onClick={() => setIsOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold h-12 px-8 shadow-md hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold h-12 px-8 shadow-md hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
             >
               Novo Cliente
             </Button>

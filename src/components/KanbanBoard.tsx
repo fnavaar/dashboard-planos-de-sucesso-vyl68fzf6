@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Cliente } from '@/services/clients'
 import { Plano } from '@/services/planos'
 import { Etapa, updateEtapaStatus } from '@/services/etapas'
@@ -31,6 +31,7 @@ import {
   AlignLeft,
   CheckCircle2,
   ChevronRight,
+  ChevronLeft,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -49,6 +50,17 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<CardExecucao | null>(null)
   const [addingToEtapa, setAddingToEtapa] = useState<string | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 360
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      })
+    }
+  }
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('text/plain', id)
@@ -108,7 +120,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
             onConfetti()
           }}
           trigger={
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200 dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:hover:from-yellow-500 dark:hover:to-amber-700 dark:font-bold">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:font-bold">
               Gerar Plano com IA
               <Sparkles className="w-5 h-5 ml-2" />
             </Button>
@@ -124,10 +136,29 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
     <div className="bg-slate-50 dark:bg-slate-900/20 p-4 md:p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all duration-200">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">Jornada de Execução</h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => scroll('left')}
+            className="h-8 w-8 rounded-full dark:border-secondary dark:text-secondary dark:hover:bg-secondary/20 transition-all hover:bg-slate-100"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => scroll('right')}
+            className="h-8 w-8 rounded-full dark:border-secondary dark:text-secondary dark:hover:bg-secondary/20 transition-all hover:bg-slate-100"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div
-        className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scroll-smooth"
+        ref={scrollContainerRef}
+        className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scroll-smooth kanban-scroll"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {sortedEtapas.map((etapa) => {
@@ -167,12 +198,12 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                     >
                       {etapa.titulo}
                     </h3>
-                    <span className="ml-2 bg-white/60 dark:bg-slate-800 px-2 py-0.5 text-xs font-semibold rounded-full text-slate-500 dark:text-slate-400 shrink-0">
+                    <span className="ml-2 bg-white/60 dark:bg-slate-800 dark:text-secondary px-2 py-0.5 text-xs font-semibold rounded-full text-slate-500 shrink-0">
                       {completedCards.length}/{colCards.length}
                     </span>
                   </div>
                   {isEtapaConcluida && (
-                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-primary flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Fase Concluída
                     </span>
                   )}
@@ -193,7 +224,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                     <Button
                       variant="ghost"
                       onClick={() => setAddingToEtapa(etapa.id)}
-                      className="w-full mt-2 border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 hover:bg-slate-200/50 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-gradient-to-r dark:hover:from-slate-300 dark:hover:to-slate-400 dark:hover:text-slate-900 dark:hover:border-solid dark:hover:border-transparent shrink-0 transition-all"
+                      className="w-full mt-2 border border-dashed border-slate-300 dark:border-secondary dark:text-secondary hover:bg-slate-200/50 hover:text-slate-700 dark:hover:bg-secondary/20 dark:hover:text-secondary-foreground shrink-0 transition-all"
                     >
                       <Plus className="w-4 h-4 mr-2" /> Nova Tarefa
                     </Button>
@@ -204,7 +235,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                   <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 animate-fade-in-up shrink-0">
                     <Button
                       onClick={() => handleCompleteEtapa(etapa.id)}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md group transition-all dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:hover:from-yellow-500 dark:hover:to-amber-700 dark:font-bold"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-md group transition-all dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:font-bold"
                     >
                       Concluir Fase
                       <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />

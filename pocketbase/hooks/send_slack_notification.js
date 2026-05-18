@@ -71,7 +71,7 @@ routerAdd(
       text: text,
     }
 
-    const token = $secrets.get('SLACK_ACCESS_TOKEN') || $secrets.get('SLACK_ACCESSS_TOKEN') || ''
+    const token = $secrets.get('SLACK_ACCESS_TOKEN') || ''
     if (!token) {
       $app.logger().error('Slack token not found')
       return e.json(200, {
