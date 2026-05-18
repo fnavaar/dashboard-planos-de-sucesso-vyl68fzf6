@@ -69,7 +69,16 @@ export default function ClientDetails() {
         </Button>
       </div>
 
-      <ClientHeader client={client} etapas={etapas} onUpdate={fetchData} />
+      <ClientHeader
+        client={client}
+        plano={plano}
+        etapas={etapas}
+        onUpdate={fetchData}
+        onConfetti={() => {
+          setShowConfetti(true)
+          setTimeout(() => setShowConfetti(false), 3000)
+        }}
+      />
 
       <KanbanBoard
         client={client}

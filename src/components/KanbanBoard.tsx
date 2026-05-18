@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Cliente } from '@/services/clients'
-import { Plano, generatePlan } from '@/services/planos'
+import { Plano } from '@/services/planos'
 import { Etapa, updateEtapaStatus } from '@/services/etapas'
 import { ExecutionDrawer } from '@/components/ExecutionDrawer'
+import { GeneratePlanDialog } from '@/components/GeneratePlanDialog'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,21 +25,7 @@ interface Props {
 }
 
 export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Props) {
-  const [generating, setGenerating] = useState(false)
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
-
-  const handleGeneratePlan = async () => {
-    try {
-      setGenerating(true)
-      await generatePlan(client.id)
-      toast.success('Plano gerado com sucesso!')
-      onUpdate()
-    } catch (err) {
-      toast.error('Erro ao gerar plano. Tente novamente.')
-    } finally {
-      setGenerating(false)
-    }
-  }
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('text/plain', id)
@@ -75,14 +62,19 @@ export function KanbanBoard({ client, plano, etapas, onUpdate, onConfetti }: Pro
           Utilize nossa IA para gerar um plano de sucesso gamificado e personalizado baseado nos
           objetivos do cliente.
         </p>
-        <Button
-          onClick={handleGeneratePlan}
-          disabled={generating}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200"
-        >
-          {generating ? 'Gerando Plano...' : 'Gerar Plano com IA'}
-          {!generating && <Sparkles className="w-5 h-5 ml-2" />}
-        </Button>
+        <GeneratePlanDialog
+          client={client}
+          onSuccess={() => {
+            onUpdate()
+            onConfetti()
+          }}
+          trigger={
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200">
+              Gerar Plano com IA
+              <Sparkles className="w-5 h-5 ml-2" />
+            </Button>
+          }
+        />
       </Card>
     )
   }

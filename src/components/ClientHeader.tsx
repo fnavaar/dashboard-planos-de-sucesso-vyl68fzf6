@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Cliente, updateCliente } from '@/services/clients'
 import { Etapa } from '@/services/etapas'
+import { Plano } from '@/services/planos'
+import { GeneratePlanDialog } from '@/components/GeneratePlanDialog'
 import { Card } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -31,11 +33,13 @@ import { toast } from 'sonner'
 
 interface Props {
   client: Cliente
+  plano: Plano | null
   etapas: Etapa[]
   onUpdate: () => void
+  onConfetti: () => void
 }
 
-export function ClientHeader({ client, etapas, onUpdate }: Props) {
+export function ClientHeader({ client, plano, etapas, onUpdate, onConfetti }: Props) {
   const StatusIcon =
     client.status === 'ativo' ? Clock : client.status === 'pausado' ? PauseCircle : CheckCircle2
 
@@ -71,6 +75,15 @@ export function ClientHeader({ client, etapas, onUpdate }: Props) {
                     <StatusIcon className="w-4 h-4" /> {client.status}
                   </Badge>
                   <EditClientDialog client={client} onUpdate={onUpdate} />
+                  {!plano && (
+                    <GeneratePlanDialog
+                      client={client}
+                      onSuccess={() => {
+                        onUpdate()
+                        onConfetti()
+                      }}
+                    />
+                  )}
                 </div>
               </div>
               <div className="flex items-center text-white/80 gap-2 text-sm">
