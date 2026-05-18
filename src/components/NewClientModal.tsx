@@ -69,9 +69,11 @@ export function NewClientModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] rounded-3xl border-0 shadow-2xl animate-in slide-in-from-bottom-12 duration-300">
         <DialogHeader>
-          <DialogTitle>Novo Cliente</DialogTitle>
+          <DialogTitle className="text-2xl font-extrabold text-slate-900 dark:text-white">
+            Novo Cliente
+          </DialogTitle>
           <DialogDescription>
             Adicione um novo cliente Elite para acompanhar seu plano de sucesso.
           </DialogDescription>
@@ -129,10 +131,18 @@ export function NewClientModal() {
               )}
             />
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsOpen(false)}
+                className="rounded-xl font-bold hover:bg-slate-100"
+              >
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">
+              <Button
+                type="submit"
+                className="bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-500/30 rounded-xl font-bold transition-all duration-200"
+              >
                 Salvar Cliente
               </Button>
             </div>

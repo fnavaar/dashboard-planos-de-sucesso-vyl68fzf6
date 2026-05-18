@@ -21,11 +21,11 @@ export default function Layout() {
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
       <header className="sticky top-0 z-40 w-full backdrop-blur-md bg-white/75 dark:bg-slate-900/75 border-b border-slate-200 dark:border-slate-800">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="bg-indigo-600 p-2 rounded-lg">
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="bg-gradient-to-tr from-indigo-500 to-pink-500 p-2 rounded-xl shadow-sm group-hover:scale-105 transition-transform duration-200">
               <User className="text-white w-5 h-5" />
             </div>
-            <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white">
+            <span className="font-extrabold text-xl tracking-tight text-slate-900 dark:text-white">
               Planos de Sucesso
             </span>
           </Link>
@@ -33,16 +33,16 @@ export default function Layout() {
           <div className="flex items-center gap-4">
             <Button
               onClick={() => setIsOpen(true)}
-              className="hidden sm:flex bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-transform active:scale-95"
+              className="hidden sm:flex bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl font-bold"
             >
-              <Plus className="w-4 h-4 mr-2" /> Novo Cliente
+              <Plus className="w-5 h-5 mr-2 stroke-[3]" /> Novo Cliente
             </Button>
             <Button
               onClick={() => setIsOpen(true)}
               size="icon"
-              className="sm:hidden bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-transform active:scale-95"
+              className="sm:hidden bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5 stroke-[3]" />
             </Button>
 
             <DropdownMenu>
