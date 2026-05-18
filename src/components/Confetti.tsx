@@ -8,7 +8,7 @@ export function Confetti({ active }: { active: boolean }) {
   useEffect(() => {
     if (active) {
       const colors = ['#6366F1', '#EC4899', '#10B981', '#F59E0B', '#8B5CF6']
-      const newPieces = Array.from({ length: 70 }).map((_, i) => ({
+      const newPieces = Array.from({ length: 150 }).map((_, i) => ({
         id: i,
         x: Math.random() * 100,
         color: colors[Math.floor(Math.random() * colors.length)],

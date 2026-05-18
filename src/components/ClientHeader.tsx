@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Clock, PauseCircle, CheckCircle2, TrendingUp, CalendarDays } from 'lucide-react'
+import { Clock, PauseCircle, CheckCircle2, TrendingUp, CalendarDays, Edit } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -45,29 +45,27 @@ export function ClientHeader({ client, etapas, onUpdate }: Props) {
   const nextStep = etapas.find((e) => e.status === 'a_fazer' || e.status === 'em_progresso')
 
   return (
-    <Card className="p-6 md:p-8 border-slate-200 dark:border-slate-800">
+    <Card className="p-6 md:p-8 border-none bg-gradient-to-r from-indigo-500 to-pink-500 shadow-md transition-all duration-200">
       <div className="flex flex-col md:flex-row gap-8">
         <div className="flex-1 space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <Avatar className="h-20 w-20 border-2 border-indigo-100 shadow-sm">
-              <AvatarFallback className="bg-indigo-50 text-indigo-600 text-2xl font-bold">
+            <Avatar className="h-20 w-20 border-4 border-white/20 shadow-sm bg-white/10 shrink-0">
+              <AvatarFallback className="bg-transparent text-white text-2xl font-bold">
                 {client.nome.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white line-clamp-2">
-                  {client.nome}
-                </h1>
-                <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold text-white line-clamp-2">{client.nome}</h1>
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge
                     className={cn(
-                      'px-3 py-1 text-sm flex items-center gap-2 capitalize',
+                      'px-3 py-1 text-sm flex items-center gap-2 capitalize border-none',
                       client.status === 'ativo'
-                        ? 'bg-emerald-100 text-emerald-700'
+                        ? 'bg-emerald-400/20 text-emerald-50'
                         : client.status === 'pausado'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-slate-100 text-slate-700',
+                          ? 'bg-amber-400/20 text-amber-50'
+                          : 'bg-white/20 text-white',
                     )}
                   >
                     <StatusIcon className="w-4 h-4" /> {client.status}
@@ -75,7 +73,7 @@ export function ClientHeader({ client, etapas, onUpdate }: Props) {
                   <EditClientDialog client={client} onUpdate={onUpdate} />
                 </div>
               </div>
-              <div className="flex items-center text-slate-500 gap-2 text-sm">
+              <div className="flex items-center text-white/80 gap-2 text-sm">
                 <CalendarDays className="w-4 h-4" />
                 <span>
                   Iniciado em{' '}
@@ -85,41 +83,35 @@ export function ClientHeader({ client, etapas, onUpdate }: Props) {
             </div>
           </div>
 
-          <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-4 rounded-xl border border-indigo-100/50 dark:border-indigo-900/30">
-            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-300 mb-1">
-              Objetivo Principal
-            </p>
-            <p className="text-slate-700 dark:text-slate-300">{client.objetivo_principal}</p>
+          <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
+            <p className="text-sm font-semibold text-white/90 mb-1">Objetivo Principal</p>
+            <p className="text-white/80">{client.objetivo_principal}</p>
           </div>
         </div>
 
-        <div className="md:w-[350px] space-y-4 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800">
-          <h3 className="font-bold flex items-center gap-2 text-slate-700 dark:text-slate-300">
-            <TrendingUp className="w-5 h-5 text-pink-500" /> Progresso do Plano
+        <div className="md:w-[350px] space-y-4 bg-white/10 backdrop-blur-sm p-6 rounded-xl border border-white/20 shadow-sm shrink-0">
+          <h3 className="font-bold flex items-center gap-2 text-white">
+            <TrendingUp className="w-5 h-5 text-emerald-300" /> Progresso do Plano
           </h3>
-          <div className="h-4 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden relative">
+          <div className="h-4 rounded-full bg-black/20 overflow-hidden relative">
             <div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-pink-500 transition-all duration-1000 ease-out"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-400 to-emerald-400 transition-all duration-1000 ease-out"
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
           <div className="flex justify-between items-end">
-            <p className="text-3xl font-bold text-slate-900 dark:text-white">
-              {progressPercentage}%
-            </p>
-            <p className="text-sm text-slate-500">
+            <p className="text-3xl font-bold text-white">{progressPercentage}%</p>
+            <p className="text-sm text-white/80">
               {concluidas} de {totalEtapas} etapas
             </p>
           </div>
 
           {nextStep && (
-            <div className="mt-4 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm animate-fade-in-up">
-              <p className="text-xs font-semibold text-indigo-500 mb-1 uppercase tracking-wider">
+            <div className="mt-4 p-3 bg-white/10 rounded-lg border border-white/20 shadow-sm animate-fade-in-up">
+              <p className="text-xs font-semibold text-emerald-300 mb-1 uppercase tracking-wider">
                 Próximo Passo
               </p>
-              <p className="font-medium text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
-                {nextStep.titulo}
-              </p>
+              <p className="font-medium text-sm text-white line-clamp-2">{nextStep.titulo}</p>
             </div>
           )}
         </div>
@@ -156,8 +148,12 @@ function EditClientDialog({ client, onUpdate }: { client: Cliente; onUpdate: () 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Editar
+        <Button
+          variant="secondary"
+          size="sm"
+          className="bg-white/20 hover:bg-white/30 text-white border-none shadow-sm transition-all duration-200"
+        >
+          <Edit className="w-4 h-4 mr-2" /> Editar
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -198,7 +194,7 @@ function EditClientDialog({ client, onUpdate }: { client: Cliente; onUpdate: () 
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="transition-all duration-200">
               {loading ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
