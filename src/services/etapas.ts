@@ -18,3 +18,15 @@ export const getEtapas = (planoId: string) =>
 
 export const updateEtapaStatus = (id: string, status: 'a_fazer' | 'em_progresso' | 'concluido') =>
   pb.collection('etapas').update<Etapa>(id, { status })
+
+export const sendSlackNotification = (data: {
+  etapa_id: string
+  acao: 'concluida' | 'iniciada' | 'atrasada'
+  responsavel: string
+  cliente_nome: string
+}) =>
+  pb.send('/backend/v1/sendSlackNotification', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' },
+  })
