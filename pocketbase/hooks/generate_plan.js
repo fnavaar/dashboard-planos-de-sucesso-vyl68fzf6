@@ -59,7 +59,14 @@ REQUISITO CRÍTICO: Sua resposta deve ser APENAS um objeto JSON válido, sem tex
       "titulo": "Nome da Etapa",
       "descricao": "Descrição detalhada",
       "objetivo": "Objetivo desta etapa",
-      "tempo_estimado": "ex: 1 semana"
+      "tempo_estimado": "ex: 1 semana",
+      "tarefas": [
+        {
+          "titulo": "Título curto da tarefa",
+          "descricao": "O que precisa ser feito de forma detalhada",
+          "metodologia": "Passos sugeridos ou como executar"
+        }
+      ]
     }
   ]
 }
@@ -125,6 +132,7 @@ ${JSON.stringify(agentPayload)}
 
       let planId = ''
       let createdEtapas = []
+      let tarefasGeradas = 0
 
       $app.runInTransaction((txApp) => {
         const planosCol = txApp.findCollectionByNameOrId('planos')
@@ -137,6 +145,8 @@ ${JSON.stringify(agentPayload)}
         planId = plan.id
 
         const etapasCol = txApp.findCollectionByNameOrId('etapas')
+        const cardsCol = txApp.findCollectionByNameOrId('cards_execucao')
+
         for (let i = 0; i < steps.length; i++) {
           const s = steps[i]
           const etapa = new Record(etapasCol)
@@ -158,6 +168,22 @@ ${JSON.stringify(agentPayload)}
             ordem: etapa.getInt('ordem'),
             status: etapa.getString('status'),
           })
+
+          const tarefas = s.tarefas || []
+          for (const t of tarefas) {
+            const card = new Record(cardsCol)
+            card.set('etapa_id', etapa.id)
+            const oQue = t.titulo
+              ? t.titulo + '\n\n' + (t.descricao || '')
+              : t.descricao || 'Nova tarefa'
+            card.set('o_que_foi_feito', oQue.trim())
+            card.set('passos_seguidos', t.metodologia || '')
+            card.set('como_foi_executado', 'Gerado automaticamente por IA')
+            card.set('quando_foi_executado', '')
+            card.set('responsavel', '')
+            txApp.save(card)
+            tarefasGeradas++
+          }
         }
       })
 
@@ -165,6 +191,7 @@ ${JSON.stringify(agentPayload)}
         data: {
           plano_id: planId,
           etapas: createdEtapas,
+          tarefas_geradas: tarefasGeradas,
         },
       })
     } catch (err) {

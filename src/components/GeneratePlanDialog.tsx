@@ -44,10 +44,16 @@ export function GeneratePlanDialog({ client, onSuccess, trigger }: Props) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-      await generatePlan(client.id, objetivo, contexto, controller.signal)
+      const res = (await generatePlan(client.id, objetivo, contexto, controller.signal)) as any
       clearTimeout(timeoutId)
 
-      toast.success('Plano gerado com sucesso!')
+      const generatedTasks = res?.data?.tarefas_geradas || res?.tarefas_geradas || 0
+      if (generatedTasks > 0) {
+        toast.success(`Mapeamento concluído: ${generatedTasks} novas tarefas adicionadas à jornada`)
+      } else {
+        toast.success('Plano gerado com sucesso!')
+      }
+
       setOpen(false)
       onSuccess()
     } catch (err) {

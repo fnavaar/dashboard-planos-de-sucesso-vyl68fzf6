@@ -147,22 +147,15 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
 
       clearTimeout(timeoutId)
 
-      const data = res?.data || res
-      const resumo = data.resumo || data.o_que_foi_feito || ''
-      const metodologia = data.metodologia || data.como_foi_executado || ''
-      const dataHora = data.data_hora || data.quando_foi_executado
+      const createdCount = res?.createdCount || 0
 
-      if (resumo) form.setValue('o_que_foi_feito', resumo, { shouldDirty: true })
-      if (metodologia) form.setValue('como_foi_executado', metodologia, { shouldDirty: true })
-      if (dataHora) {
-        form.setValue('quando_foi_executado', new Date(dataHora), { shouldDirty: true })
-      }
-
-      setHasTldvImport(true)
       setTldvModalOpen(false)
-      toast.success('Dados carregados com sucesso!', {
+      toast.success(`Mapeamento concluído: ${createdCount} novas tarefas adicionadas à jornada`, {
         icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
       })
+      form.reset()
+      onSaved()
+      onOpenChange(false)
     } catch (err: any) {
       clearTimeout(timeoutId)
       if (err.status === 404) {

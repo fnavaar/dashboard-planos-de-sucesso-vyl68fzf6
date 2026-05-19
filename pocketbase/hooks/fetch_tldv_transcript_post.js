@@ -121,7 +121,16 @@ routerAdd(
 
     while (attempt <= retries.length) {
       try {
-        const prompt = `Objetivo da etapa: ${objetivo}\n\nTranscrição da reunião:\n${transcriptText.substring(0, 15000)}\n\nExtraia as informações solicitadas nas instruções do sistema. Retorne APENAS um objeto JSON válido com as seguintes chaves:\n- "o_que_foi_feito": A lista numerada com os pontos principais em português.\n- "como_foi_executado": A metodologia ou ferramentas mencionadas.`
+        const prompt = `Objetivo da etapa: ${objetivo}\n\nTranscrição da reunião:\n${transcriptText.substring(0, 15000)}\n\nExtraia as ações e tarefas que precisam ser feitas. Retorne APENAS um objeto JSON válido, sem texto adicional, com a seguinte estrutura:
+{
+  "tarefas": [
+    {
+      "titulo": "Título curto da tarefa",
+      "descricao": "O que precisa ser feito de forma detalhada",
+      "metodologia": "Passos sugeridos ou como executar"
+    }
+  ]
+}`
         const aiRes = $ai.agent('tldv-analyzer').chat({
           user_id: userId,
           message: prompt,
@@ -163,47 +172,47 @@ routerAdd(
       parsedResult = JSON.parse(jsonText)
     } catch (e) {
       parsedResult = {
-        o_que_foi_feito: aiResult,
-        como_foi_executado: 'Não foi possível extrair a metodologia separadamente.',
+        tarefas: [
+          {
+            titulo: 'Resumo e Ações da Reunião',
+            descricao: aiResult,
+            metodologia: 'Revisar a transcrição importada.',
+          },
+        ],
       }
     }
 
-    const payload = {
-      etapa_id: etapa_id || null,
-      o_que_foi_feito: parsedResult.o_que_foi_feito || '',
-      como_foi_executado: parsedResult.como_foi_executado || '',
-      quando_foi_executado: meetingDate,
-    }
-
+    let createdCount = 0
     if (etapa_id) {
-      let card = null
-      try {
-        card = $app.findFirstRecordByData('cards_execucao', 'etapa_id', etapa_id)
-      } catch (err) {}
+      const tarefas = parsedResult.tarefas || []
+      const collection = $app.findCollectionByNameOrId('cards_execucao')
 
-      try {
-        if (card) {
-          card.set('o_que_foi_feito', payload.o_que_foi_feito)
-          card.set('como_foi_executado', payload.como_foi_executado)
-          card.set('quando_foi_executado', payload.quando_foi_executado)
-          $app.save(card)
-        } else {
-          const collection = $app.findCollectionByNameOrId('cards_execucao')
-          card = new Record(collection)
-          card.set('etapa_id', payload.etapa_id)
-          card.set('o_que_foi_feito', payload.o_que_foi_feito)
-          card.set('como_foi_executado', payload.como_foi_executado)
-          card.set('quando_foi_executado', payload.quando_foi_executado)
-          card.set('responsavel', userId)
-          $app.save(card)
+      $app.runInTransaction((txApp) => {
+        for (const t of tarefas) {
+          try {
+            const card = new Record(collection)
+            card.set('etapa_id', etapa_id)
+            const oQue = t.titulo
+              ? t.titulo + '\n\n' + (t.descricao || '')
+              : t.descricao || 'Nova tarefa'
+            card.set('o_que_foi_feito', oQue.trim())
+            card.set('passos_seguidos', t.metodologia || '')
+            card.set('como_foi_executado', 'Gerado automaticamente por IA a partir do TLDV')
+            card.set('quando_foi_executado', '')
+            card.set('responsavel', '')
+            txApp.save(card)
+            createdCount++
+          } catch (err) {
+            $app.logger().error('Erro ao salvar card de execução', 'erro', err.message)
+          }
         }
-      } catch (err) {
-        $app.logger().error('Erro ao salvar card de execução', 'erro', err.message)
-        return e.json(500, { error: 'Erro ao salvar no banco de dados.' })
-      }
+      })
     }
 
-    return e.json(200, { data: payload })
+    return e.json(200, {
+      message: `Importação concluída. ${createdCount} tarefas adicionadas.`,
+      createdCount,
+    })
   },
   $apis.requireAuth(),
 )
