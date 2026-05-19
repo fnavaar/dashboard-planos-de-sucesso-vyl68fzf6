@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,13 +26,6 @@ import { createCliente } from '@/services/clients'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
 import pb from '@/lib/pocketbase/client'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 
 const formSchema = z.object({
@@ -45,35 +38,12 @@ const formSchema = z.object({
   tldv_meeting_id: z.string().optional(),
 })
 
-interface TldvOption {
-  id: string
-  title?: string
-  name?: string
-  transcript?: string
-  text?: string
-  content?: string
-}
-
 export function NewClientModal() {
   const { isOpen, setIsOpen } = useNewClient()
   const { user } = useAuth()
   const { toast } = useToast()
 
-  const [tldvOptions, setTldvOptions] = useState<TldvOption[]>([])
-  const [loadingOptions, setLoadingOptions] = useState(false)
-
-  useEffect(() => {
-    if (isOpen) {
-      setLoadingOptions(true)
-      pb.send('/backend/v1/fetch-tldv-transcript-options', { method: 'GET' })
-        .then((res) => {
-          const arr = Array.isArray(res) ? res : res?.data || res?.options || []
-          setTldvOptions(arr)
-        })
-        .catch((err) => console.error('Error fetching TLDV options', err))
-        .finally(() => setLoadingOptions(false))
-    }
-  }, [isOpen])
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -81,34 +51,42 @@ export function NewClientModal() {
       nome: '',
       objetivo_principal: '',
       contexto: '',
+      tldv_meeting_id: '',
     },
   })
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!values.tldv_meeting_id && (!values.objetivo_principal || !values.contexto)) {
       toast({
-        title: 'Preencha o objetivo e contexto ou selecione uma reunião do TLDV.',
+        title: 'Preencha o objetivo e contexto ou informe uma reunião do TLDV.',
         variant: 'destructive',
       })
       return
     }
 
+    setIsSubmitting(true)
     try {
       let transcript = ''
-      if (values.tldv_meeting_id) {
-        const selected = tldvOptions.find((o) => o.id === values.tldv_meeting_id)
-        transcript = selected?.transcript || selected?.text || selected?.content || ''
+      let finalTldvId = values.tldv_meeting_id?.trim()
 
-        if (!transcript) {
-          try {
-            const res = await pb.send('/backend/v1/fetch-tldv-transcript', {
-              method: 'POST',
-              body: JSON.stringify({ tldv_meeting_id: values.tldv_meeting_id }),
-            })
-            transcript = res?.transcript || res?.text || JSON.stringify(res) || ''
-          } catch (e) {
-            console.error('Error fetching single transcript', e)
-          }
+      if (finalTldvId) {
+        const match = finalTldvId.match(/tldv\.io\/app\/meetings\/([a-zA-Z0-9_-]+)/)
+        finalTldvId = match ? match[1] : finalTldvId
+
+        try {
+          const res = await pb.send('/backend/v1/fetch-tldv-transcript', {
+            method: 'POST',
+            body: JSON.stringify({ tldv_meeting_id: finalTldvId }),
+          })
+          transcript = res?.transcript || res?.text || JSON.stringify(res) || ''
+        } catch (e) {
+          console.error('Error fetching single transcript', e)
+          toast({
+            title: 'Aviso',
+            description:
+              'ID inválido ou reunião não encontrada. O cliente será criado sem o resumo automático.',
+            variant: 'destructive',
+          })
         }
       }
 
@@ -120,14 +98,25 @@ export function NewClientModal() {
         status: 'ativo',
         progresso: 0,
         user_id: user?.id,
-        tldv_meeting_id: values.tldv_meeting_id,
+        tldv_meeting_id: finalTldvId,
         kickoff_transcript: transcript,
       })
-      toast({ title: 'Cliente criado com sucesso!' })
+
+      if (transcript) {
+        toast({
+          title: 'Cliente criado com sucesso!',
+          description: 'O plano de sucesso será gerado pela IA em instantes.',
+        })
+      } else if (!finalTldvId) {
+        toast({ title: 'Cliente criado com sucesso!' })
+      }
+
       form.reset()
       setIsOpen(false)
     } catch (err) {
       toast({ title: 'Erro ao criar cliente', variant: 'destructive' })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -162,31 +151,14 @@ export function NewClientModal() {
               name="tldv_meeting_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reunião de Kickoff (tl;dv)</FormLabel>
-                  <Select
-                    onValueChange={(v) => field.onChange(v === 'none' ? undefined : v)}
-                    value={field.value || 'none'}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Selecione uma reunião para gerar plano por IA" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhuma (Preencher manualmente)</SelectItem>
-                      {tldvOptions.map((opt) => (
-                        <SelectItem key={opt.id} value={opt.id}>
-                          {opt.title || opt.name || opt.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Link ou ID da Reunião TLDV (Kickoff)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ex: https://tldv.io/app/meetings/abc123 ou apenas o ID"
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
-                  {loadingOptions && (
-                    <p className="text-xs text-muted-foreground flex items-center mt-1">
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Carregando reuniões...
-                    </p>
-                  )}
                 </FormItem>
               )}
             />
@@ -242,9 +214,17 @@ export function NewClientModal() {
               </Button>
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="bg-indigo-600 text-white hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-500/30 rounded-xl font-bold transition-all duration-200"
               >
-                Salvar Cliente
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Cliente'
+                )}
               </Button>
             </div>
           </form>
