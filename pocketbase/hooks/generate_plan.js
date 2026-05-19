@@ -63,8 +63,8 @@ REQUISITO CRÍTICO: Sua resposta deve ser APENAS um objeto JSON válido, sem tex
       "tarefas": [
         {
           "titulo": "Título curto da tarefa",
-          "descricao": "O que precisa ser feito de forma detalhada",
-          "metodologia": "Passos sugeridos ou como executar"
+          "o_que_foi_feito": "O que precisa ser feito de forma detalhada (objetivo)",
+          "passos_seguidos": "Passos sugeridos ou metodologia de como executar"
         }
       ]
     }
@@ -171,18 +171,24 @@ ${JSON.stringify(agentPayload)}
 
           const tarefas = s.tarefas || []
           for (const t of tarefas) {
-            const card = new Record(cardsCol)
-            card.set('etapa_id', etapa.id)
-            const oQue = t.titulo
-              ? t.titulo + '\n\n' + (t.descricao || '')
-              : t.descricao || 'Nova tarefa'
-            card.set('o_que_foi_feito', oQue.trim())
-            card.set('passos_seguidos', t.metodologia || '')
-            card.set('como_foi_executado', 'Gerado automaticamente por IA')
-            card.set('quando_foi_executado', '')
-            card.set('responsavel', '')
-            txApp.save(card)
-            tarefasGeradas++
+            try {
+              const card = new Record(cardsCol)
+              card.set('etapa_id', etapa.id)
+              const oQue = t.titulo
+                ? t.titulo + '\n\n' + (t.o_que_foi_feito || '')
+                : t.o_que_foi_feito || 'Nova tarefa'
+              card.set('o_que_foi_feito', oQue.trim())
+              card.set('passos_seguidos', t.passos_seguidos || '')
+              card.set('como_foi_executado', 'Gerado automaticamente por IA')
+              card.set('quando_foi_executado', '')
+              card.set('responsavel', '')
+              txApp.save(card)
+              tarefasGeradas++
+            } catch (err) {
+              $app
+                .logger()
+                .error('Erro ao salvar card de execução gerado pela IA', 'erro', err.message)
+            }
           }
         }
       })

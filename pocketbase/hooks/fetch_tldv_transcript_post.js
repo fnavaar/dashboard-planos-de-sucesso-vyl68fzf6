@@ -7,11 +7,15 @@ routerAdd(
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
     const body = e.requestInfo().body || {}
-    const etapa_id = body.etapa_id
+    let etapa_id = body.etapa_id
+    const cliente_id = body.cliente_id
     let tldv_meeting_id = body.tldv_meeting_id
 
     if (etapa_id !== undefined && etapa_id !== null && typeof etapa_id !== 'string') {
       return e.json(400, { error: 'O campo etapa_id deve ser texto se fornecido.' })
+    }
+    if (cliente_id !== undefined && cliente_id !== null && typeof cliente_id !== 'string') {
+      return e.json(400, { error: 'O campo cliente_id deve ser texto se fornecido.' })
     }
     if (!tldv_meeting_id || typeof tldv_meeting_id !== 'string') {
       return e.json(400, { error: 'O campo tldv_meeting_id é obrigatório e deve ser texto.' })
@@ -30,6 +34,42 @@ routerAdd(
     }
 
     let objetivo = 'Não especificado'
+
+    if (!etapa_id && cliente_id) {
+      try {
+        const planos = $app.findRecordsByFilter(
+          'planos',
+          `cliente_id = "${cliente_id}" && status != "concluido"`,
+          '-created',
+          1,
+          0,
+        )
+        if (planos.length > 0) {
+          const etapas = $app.findRecordsByFilter(
+            'etapas',
+            `plano_id = "${planos[0].id}"`,
+            'ordem',
+            1,
+            0,
+          )
+          if (etapas.length > 0) {
+            etapa_id = etapas[0].id
+          } else {
+            const etapa = new Record($app.findCollectionByNameOrId('etapas'))
+            etapa.set('plano_id', planos[0].id)
+            etapa.set('titulo', 'Discovery')
+            etapa.set('descricao', 'Etapa inicial criada automaticamente.')
+            etapa.set('status', 'a_fazer')
+            etapa.set('ordem', 1)
+            $app.save(etapa)
+            etapa_id = etapa.id
+          }
+        }
+      } catch (err) {
+        $app.logger().error('Erro ao buscar ou criar etapa inicial', 'erro', err.message)
+      }
+    }
+
     if (etapa_id) {
       try {
         const etapa = $app.findRecordById('etapas', etapa_id)
@@ -126,8 +166,8 @@ routerAdd(
   "tarefas": [
     {
       "titulo": "Título curto da tarefa",
-      "descricao": "O que precisa ser feito de forma detalhada",
-      "metodologia": "Passos sugeridos ou como executar"
+      "o_que_foi_feito": "O que precisa ser feito de forma detalhada",
+      "passos_seguidos": "Passos sugeridos ou como executar"
     }
   ]
 }`
@@ -175,8 +215,8 @@ routerAdd(
         tarefas: [
           {
             titulo: 'Resumo e Ações da Reunião',
-            descricao: aiResult,
-            metodologia: 'Revisar a transcrição importada.',
+            o_que_foi_feito: aiResult,
+            passos_seguidos: 'Revisar a transcrição importada.',
           },
         ],
       }
@@ -193,10 +233,10 @@ routerAdd(
             const card = new Record(collection)
             card.set('etapa_id', etapa_id)
             const oQue = t.titulo
-              ? t.titulo + '\n\n' + (t.descricao || '')
-              : t.descricao || 'Nova tarefa'
+              ? t.titulo + '\n\n' + (t.o_que_foi_feito || '')
+              : t.o_que_foi_feito || 'Nova tarefa'
             card.set('o_que_foi_feito', oQue.trim())
-            card.set('passos_seguidos', t.metodologia || '')
+            card.set('passos_seguidos', t.passos_seguidos || '')
             card.set('como_foi_executado', 'Gerado automaticamente por IA a partir do TLDV')
             card.set('quando_foi_executado', '')
             card.set('responsavel', '')
