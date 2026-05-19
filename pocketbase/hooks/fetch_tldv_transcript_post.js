@@ -10,8 +10,8 @@ routerAdd(
     const etapa_id = body.etapa_id
     let tldv_meeting_id = body.tldv_meeting_id
 
-    if (!etapa_id || typeof etapa_id !== 'string') {
-      return e.json(400, { error: 'O campo etapa_id é obrigatório e deve ser texto.' })
+    if (etapa_id !== undefined && etapa_id !== null && typeof etapa_id !== 'string') {
+      return e.json(400, { error: 'O campo etapa_id deve ser texto se fornecido.' })
     }
     if (!tldv_meeting_id || typeof tldv_meeting_id !== 'string') {
       return e.json(400, { error: 'O campo tldv_meeting_id é obrigatório e deve ser texto.' })
@@ -29,20 +29,22 @@ routerAdd(
       return e.json(401, { error: 'Não autenticado.' })
     }
 
-    let objetivo = 'Não especificado'
-    try {
-      const etapa = $app.findRecordById('etapas', etapa_id)
-      const plano = $app.findRecordById('planos', etapa.getString('plano_id'))
-      const cliente = $app.findRecordById('clientes', plano.getString('cliente_id'))
-      if (cliente.getString('user_id') !== userId) {
-        return e.json(403, { error: 'Sem permissão para acessar esta etapa.' })
+    let objetivo = 'Mapeamento inicial do plano de sucesso do cliente'
+    if (etapa_id) {
+      try {
+        const etapa = $app.findRecordById('etapas', etapa_id)
+        const plano = $app.findRecordById('planos', etapa.getString('plano_id'))
+        const cliente = $app.findRecordById('clientes', plano.getString('cliente_id'))
+        if (cliente.getString('user_id') !== userId) {
+          return e.json(403, { error: 'Sem permissão para acessar esta etapa.' })
+        }
+        const obj = etapa.getString('objetivo')
+        if (obj && obj.trim().length > 0) {
+          objetivo = obj.trim()
+        }
+      } catch (err) {
+        return e.json(404, { error: 'Etapa não encontrada ou sem permissão.' })
       }
-      const obj = etapa.getString('objetivo')
-      if (obj && obj.trim().length > 0) {
-        objetivo = obj.trim()
-      }
-    } catch (err) {
-      return e.json(404, { error: 'Etapa não encontrada ou sem permissão.' })
     }
 
     const tldvKey = $secrets.get('API_TLDV')
@@ -165,37 +167,39 @@ routerAdd(
       }
     }
 
-    let card = null
-    try {
-      card = $app.findFirstRecordByData('cards_execucao', 'etapa_id', etapa_id)
-    } catch (err) {}
-
     const payload = {
-      etapa_id: etapa_id,
+      etapa_id: etapa_id || null,
       o_que_foi_feito: parsedResult.o_que_foi_feito || '',
       como_foi_executado: parsedResult.como_foi_executado || '',
       quando_foi_executado: meetingDate,
     }
 
-    try {
-      if (card) {
-        card.set('o_que_foi_feito', payload.o_que_foi_feito)
-        card.set('como_foi_executado', payload.como_foi_executado)
-        card.set('quando_foi_executado', payload.quando_foi_executado)
-        $app.save(card)
-      } else {
-        const collection = $app.findCollectionByNameOrId('cards_execucao')
-        card = new Record(collection)
-        card.set('etapa_id', payload.etapa_id)
-        card.set('o_que_foi_feito', payload.o_que_foi_feito)
-        card.set('como_foi_executado', payload.como_foi_executado)
-        card.set('quando_foi_executado', payload.quando_foi_executado)
-        card.set('responsavel', userId)
-        $app.save(card)
+    if (etapa_id) {
+      let card = null
+      try {
+        card = $app.findFirstRecordByData('cards_execucao', 'etapa_id', etapa_id)
+      } catch (err) {}
+
+      try {
+        if (card) {
+          card.set('o_que_foi_feito', payload.o_que_foi_feito)
+          card.set('como_foi_executado', payload.como_foi_executado)
+          card.set('quando_foi_executado', payload.quando_foi_executado)
+          $app.save(card)
+        } else {
+          const collection = $app.findCollectionByNameOrId('cards_execucao')
+          card = new Record(collection)
+          card.set('etapa_id', payload.etapa_id)
+          card.set('o_que_foi_feito', payload.o_que_foi_feito)
+          card.set('como_foi_executado', payload.como_foi_executado)
+          card.set('quando_foi_executado', payload.quando_foi_executado)
+          card.set('responsavel', userId)
+          $app.save(card)
+        }
+      } catch (err) {
+        $app.logger().error('Erro ao salvar card de execução', 'erro', err.message)
+        return e.json(500, { error: 'Erro ao salvar no banco de dados.' })
       }
-    } catch (err) {
-      $app.logger().error('Erro ao salvar card de execução', 'erro', err.message)
-      return e.json(500, { error: 'Erro ao salvar no banco de dados.' })
     }
 
     return e.json(200, { data: payload })

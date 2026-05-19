@@ -78,7 +78,11 @@ export function NewClientModal() {
             method: 'POST',
             body: JSON.stringify({ tldv_meeting_id: finalTldvId }),
           })
-          transcript = res?.transcript || res?.text || JSON.stringify(res) || ''
+          if (res?.data?.o_que_foi_feito) {
+            transcript = `Resumo:\n${res.data.o_que_foi_feito}\n\nMetodologia/Ferramentas:\n${res.data.como_foi_executado}`
+          } else {
+            transcript = res?.transcript || res?.text || JSON.stringify(res) || ''
+          }
         } catch (e) {
           console.error('Error fetching single transcript', e)
           toast({
