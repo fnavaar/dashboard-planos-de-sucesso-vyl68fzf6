@@ -48,13 +48,33 @@ routerAdd(
         empresa: 'Adapta',
       }
 
+      const promptInstructions = `
+Por favor, analise as informações fornecidas e retorne um plano de sucesso.
+REQUISITO CRÍTICO: Sua resposta deve ser APENAS um objeto JSON válido, sem texto antes ou depois, sem blocos de formatação markdown (\`\`\`json). A estrutura do JSON deve ser:
+{
+  "titulo": "Plano de Sucesso: [Nome do Plano]",
+  "descricao": "Breve descrição geral",
+  "etapas": [
+    {
+      "titulo": "Nome da Etapa",
+      "descricao": "Descrição detalhada",
+      "objetivo": "Objetivo desta etapa",
+      "tempo_estimado": "ex: 1 semana"
+    }
+  ]
+}
+
+Dados:
+${JSON.stringify(agentPayload)}
+`
+
       let result
       let retries = 0
       while (retries < 2) {
         try {
           result = $ai.agent('agente-mapass').chat({
             user_id: userId,
-            message: JSON.stringify(agentPayload),
+            message: promptInstructions,
           })
           break
         } catch (err) {
@@ -67,16 +87,32 @@ routerAdd(
       }
 
       let planData
+      let rawContent = (result.content || '').trim()
+
+      // Limpeza de blocos de markdown
+      if (rawContent.startsWith('```json')) {
+        rawContent = rawContent.substring(7)
+      } else if (rawContent.startsWith('```')) {
+        rawContent = rawContent.substring(3)
+      }
+      if (rawContent.endsWith('```')) {
+        rawContent = rawContent.slice(0, -3)
+      }
+      rawContent = rawContent.trim()
+
       try {
-        planData = JSON.parse(result.content)
+        planData = JSON.parse(rawContent)
       } catch (_) {
         try {
-          const match = result.content.match(/\{[\s\S]*\}/)
+          // Última tentativa: extrair via regex o primeiro bloco {}
+          const match = rawContent.match(/\{[\s\S]*\}/)
           if (!match) throw new Error('No object found')
           planData = JSON.parse(match[0])
         } catch (err) {
           $app.logger().error('Erro ao fazer parse da resposta da IA', 'content', result.content)
-          return e.json(500, { error: 'Erro ao processar resposta da IA. Tente novamente.' })
+          return e.json(422, {
+            error: 'Não foi possível processar a resposta gerada pela IA. Tente novamente.',
+          })
         }
       }
 
