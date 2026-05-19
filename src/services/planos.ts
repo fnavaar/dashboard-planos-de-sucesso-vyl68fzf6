@@ -13,6 +13,11 @@ export interface Plano {
 export const getPlanos = (clienteId: string) =>
   pb.collection('planos').getFullList<Plano>({ filter: `cliente_id = "${clienteId}"` })
 
+export const updatePlano = (id: string, data: Partial<Plano>) =>
+  pb.collection('planos').update<Plano>(id, data)
+
+export const deletePlano = (id: string) => pb.collection('planos').delete(id)
+
 export const generatePlan = async (
   clienteId: string,
   objetivoPrincipal: string,

@@ -32,6 +32,8 @@ export const updateEtapaStatus = (
 export const updateEtapa = (id: string, data: Partial<Etapa>) =>
   pb.collection('etapas').update<Etapa>(id, data)
 
+export const deleteEtapa = (id: string) => pb.collection('etapas').delete(id)
+
 export const sendSlackNotification = (data: {
   etapa_id: string
   acao: 'concluida' | 'iniciada' | 'atrasada'

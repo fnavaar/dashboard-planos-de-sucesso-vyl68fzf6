@@ -33,11 +33,29 @@ import {
   CalendarDays,
   Edit,
   Sparkles,
+  Trash2,
+  Loader2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { useNavigate } from 'react-router-dom'
+import { deleteCliente } from '@/services/clients'
+import { getPlanos, deletePlano } from '@/services/planos'
+import { getEtapas, deleteEtapa } from '@/services/etapas'
+import { getCardsExecucao, deleteCardExecucao } from '@/services/cards_execucao'
 
 interface Props {
   client: Cliente
@@ -55,6 +73,37 @@ export function ClientHeader({ client, plano, etapas, onUpdate, onConfetti }: Pr
   const concluidas = etapas.filter((e) => e.status === 'concluido').length
   const progressPercentage = totalEtapas === 0 ? 0 : Math.round((concluidas / totalEtapas) * 100)
   const nextStep = etapas.find((e) => e.status === 'a_fazer' || e.status === 'em_progresso')
+
+  const navigate = useNavigate()
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDeleteClient = async () => {
+    setIsDeleting(true)
+    try {
+      const ps = await getPlanos(client.id)
+      for (const p of ps) {
+        const es = await getEtapas(p.id)
+        const eIds = es.map((e) => e.id)
+        if (eIds.length > 0) {
+          const cs = await getCardsExecucao(eIds)
+          for (const c of cs) {
+            await deleteCardExecucao(c.id)
+          }
+        }
+        for (const e of es) {
+          await deleteEtapa(e.id)
+        }
+        await deletePlano(p.id)
+      }
+      await deleteCliente(client.id)
+      toast.success('Cliente excluído com sucesso')
+      navigate('/')
+    } catch (err: any) {
+      toast.error('Erro ao excluir cliente e dados associados')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
     <Card className="p-6 md:p-8 border-none bg-gradient-to-r from-indigo-500 to-pink-500 shadow-md transition-all duration-200">
@@ -83,6 +132,47 @@ export function ClientHeader({ client, plano, etapas, onUpdate, onConfetti }: Pr
                     <StatusIcon className="w-4 h-4" /> {client.status}
                   </Badge>
                   <EditClientDialog client={client} onUpdate={onUpdate} />
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="bg-red-500/20 hover:bg-red-500/40 text-white border-none shadow-sm transition-all duration-200"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}
+                        Deletar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Deletar Cliente?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action is permanent and will delete all associated plans, stages, and
+                          execution logs.
+                          <br />
+                          <br />
+                          (Esta ação é permanente e excluirá todos os planos, etapas e logs de
+                          execução associados.)
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteClient}
+                          className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                        >
+                          Deletar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
                   {!plano && (
                     <GeneratePlanDialog
                       client={client}
