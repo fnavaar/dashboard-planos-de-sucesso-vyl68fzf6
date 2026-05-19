@@ -120,6 +120,14 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const handleImportTldv = async () => {
     if (!tldvMeetingId.trim()) return
 
+    const match = tldvMeetingId.match(/tldv\.io\/app\/meetings\/([a-zA-Z0-9_-]+)/)
+    const parsedId = match ? match[1] : tldvMeetingId.trim()
+
+    if (!parsedId) {
+      setTldvError('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.')
+      return
+    }
+
     setImportingTldv(true)
     setTldvError(null)
     const controller = new AbortController()
@@ -130,7 +138,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
         method: 'POST',
         body: JSON.stringify({
           etapa_id: etapa.id,
-          tldv_meeting_id: tldvMeetingId.trim(),
+          tldv_meeting_id: parsedId,
         }),
         signal: controller.signal,
       })
@@ -565,9 +573,9 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>ID da Reunião TLDV</Label>
+                <Label>Link ou ID da Reunião TLDV</Label>
                 <Input
-                  placeholder="Ex: 123456..."
+                  placeholder="Ex: https://tldv.io/app/meetings/abc123 ou apenas o ID"
                   value={tldvMeetingId}
                   onChange={(e) => {
                     setTldvMeetingId(e.target.value)

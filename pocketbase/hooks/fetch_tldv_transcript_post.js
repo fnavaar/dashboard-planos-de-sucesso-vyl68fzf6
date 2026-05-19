@@ -1,12 +1,14 @@
 routerAdd(
   'POST',
   '/backend/v1/fetch-tldv-transcript',
-  (e) => {
+  async (e) => {
     e.response.header().set('Access-Control-Allow-Origin', '*')
+
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
     const body = e.requestInfo().body || {}
     const etapa_id = body.etapa_id
-    const tldv_meeting_id = body.tldv_meeting_id
+    let tldv_meeting_id = body.tldv_meeting_id
 
     if (!etapa_id || typeof etapa_id !== 'string') {
       return e.json(400, { error: 'O campo etapa_id é obrigatório e deve ser texto.' })
@@ -15,17 +17,29 @@ routerAdd(
       return e.json(400, { error: 'O campo tldv_meeting_id é obrigatório e deve ser texto.' })
     }
 
+    const match = tldv_meeting_id.match(/tldv\.io\/app\/meetings\/([a-zA-Z0-9_-]+)/)
+    tldv_meeting_id = match ? match[1] : tldv_meeting_id.trim()
+
+    if (!tldv_meeting_id) {
+      return e.json(400, { error: 'O campo tldv_meeting_id é inválido.' })
+    }
+
     const userId = e.auth?.id
     if (!userId) {
       return e.json(401, { error: 'Não autenticado.' })
     }
 
+    let objetivo = 'Não especificado'
     try {
       const etapa = $app.findRecordById('etapas', etapa_id)
       const plano = $app.findRecordById('planos', etapa.getString('plano_id'))
       const cliente = $app.findRecordById('clientes', plano.getString('cliente_id'))
       if (cliente.getString('user_id') !== userId) {
         return e.json(403, { error: 'Sem permissão para acessar esta etapa.' })
+      }
+      const obj = etapa.getString('objetivo')
+      if (obj && obj.trim().length > 0) {
+        objetivo = obj.trim()
       }
     } catch (err) {
       return e.json(404, { error: 'Etapa não encontrada ou sem permissão.' })
@@ -104,7 +118,7 @@ routerAdd(
 
     while (attempt <= retries.length) {
       try {
-        const prompt = `Transcrição da reunião:\n${transcriptText.substring(0, 15000)}\n\nExtraia as informações solicitadas nas instruções do sistema. Retorne APENAS um objeto JSON válido com as seguintes chaves:\n- "o_que_foi_feito": A lista numerada com os pontos principais em português.\n- "como_foi_executado": A metodologia ou ferramentas mencionadas.`
+        const prompt = `Objetivo da etapa: ${objetivo}\n\nTranscrição da reunião:\n${transcriptText.substring(0, 15000)}\n\nExtraia as informações solicitadas nas instruções do sistema. Retorne APENAS um objeto JSON válido com as seguintes chaves:\n- "o_que_foi_feito": A lista numerada com os pontos principais em português.\n- "como_foi_executado": A metodologia ou ferramentas mencionadas.`
         const aiRes = $ai.agent('tldv-analyzer').chat({
           user_id: userId,
           message: prompt,
@@ -121,10 +135,7 @@ routerAdd(
 
         if (isRetryable && attempt < retries.length) {
           $app.logger().warn('IA Indisponível, tentando novamente', 'tentativa', attempt + 1)
-          let end = Date.now() + retries[attempt]
-          while (Date.now() < end) {
-            /* busy wait fallback */
-          }
+          await sleep(retries[attempt])
           attempt++
           continue
         }
