@@ -124,7 +124,9 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     const parsedId = match ? match[1] : tldvMeetingId.trim()
 
     if (!parsedId) {
-      setTldvError('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.')
+      setTldvError(
+        'Reunião não encontrada. Verifique se o link/ID está correto e se a reunião foi compartilhada na sua conta TLDV.',
+      )
       return
     }
 
@@ -163,7 +165,17 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
       })
     } catch (err: any) {
       clearTimeout(timeoutId)
-      setTldvError('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.')
+      if (err.status === 404) {
+        setTldvError(
+          'Reunião não encontrada. Verifique se o link/ID está correto e se a reunião foi compartilhada na sua conta TLDV.',
+        )
+      } else if (err.status === 401) {
+        setTldvError(
+          'Erro de autenticação com TLDV. Verifique se a chave da API está configurada corretamente nos secrets do Skip Cloud.',
+        )
+      } else {
+        setTldvError('Erro ao carregar transcrição. Verifique o ID da reunião ou tente novamente.')
+      }
     } finally {
       setImportingTldv(false)
     }

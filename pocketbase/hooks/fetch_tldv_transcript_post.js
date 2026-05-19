@@ -29,7 +29,7 @@ routerAdd(
       return e.json(401, { error: 'Não autenticado.' })
     }
 
-    let objetivo = 'Mapeamento inicial do plano de sucesso do cliente'
+    let objetivo = 'Não especificado'
     if (etapa_id) {
       try {
         const etapa = $app.findRecordById('etapas', etapa_id)
@@ -56,21 +56,22 @@ routerAdd(
     let meetingDate = new Date().toISOString()
     try {
       const metaRes = $http.send({
-        url: `https://api.tldv.io/v1/meetings/${tldv_meeting_id}`,
+        url: `https://pasta.tldv.io/v1alpha1/meetings/${tldv_meeting_id}`,
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${tldvKey}`,
+          'x-api-key': tldvKey,
           'Content-Type': 'application/json',
         },
         timeout: 15,
       })
 
-      if (metaRes.statusCode === 401)
+      if (metaRes.statusCode === 401 || metaRes.statusCode === 403)
         return e.json(401, { error: 'Erro de autenticação com TLDV.' })
       if (metaRes.statusCode === 404) return e.json(404, { error: 'Reunião não encontrada.' })
 
       if (metaRes.statusCode === 200 && metaRes.json) {
-        if (metaRes.json.created_at) meetingDate = metaRes.json.created_at
+        if (metaRes.json.happenedAt) meetingDate = metaRes.json.happenedAt
+        else if (metaRes.json.created_at) meetingDate = metaRes.json.created_at
         else if (metaRes.json.date) meetingDate = metaRes.json.date
       }
     } catch (err) {
@@ -80,16 +81,16 @@ routerAdd(
     let transcriptText = ''
     try {
       const transRes = $http.send({
-        url: `https://api.tldv.io/v1/meetings/${tldv_meeting_id}/transcript`,
+        url: `https://pasta.tldv.io/v1alpha1/meetings/${tldv_meeting_id}/transcript`,
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${tldvKey}`,
+          'x-api-key': tldvKey,
           'Content-Type': 'application/json',
         },
         timeout: 30,
       })
 
-      if (transRes.statusCode === 401)
+      if (transRes.statusCode === 401 || transRes.statusCode === 403)
         return e.json(401, { error: 'Erro de autenticação com TLDV.' })
       if (transRes.statusCode === 404) return e.json(404, { error: 'Reunião não encontrada.' })
 
