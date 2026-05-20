@@ -154,6 +154,12 @@ routerAdd(
       return e.json(400, { error: 'Transcrição vazia ou inválida.' })
     }
 
+    const openaiKey = $secrets.get('API_OPENAI')
+    if (!openaiKey) {
+      $app.logger().error('Chave API_OPENAI não configurada.')
+      return e.json(500, { error: 'Chave API_OPENAI não configurada.' })
+    }
+
     let retries = [2000, 4000, 8000]
     let aiResult = null
     let attempt = 0
@@ -171,19 +177,45 @@ routerAdd(
     }
   ]
 }`
-        const aiRes = $ai.agent('tldv-analyzer').chat({
-          user_id: userId,
-          message: prompt,
+        const openAiRes = $http.send({
+          url: 'https://api.openai.com/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [{ role: 'user', content: prompt }],
+          }),
+          timeout: 30,
         })
-        aiResult = aiRes.content
-        break
-      } catch (err) {
-        let isRetryable = false
-        if (err.status === 503 || err.status === 502) {
-          isRetryable = true
-        } else if (err.name === 'SkipAiConfigError' || err.name === 'SkipAiError') {
-          isRetryable = true
+
+        if (openAiRes.statusCode >= 200 && openAiRes.statusCode < 300) {
+          aiResult = openAiRes.json.choices[0].message.content
+          break
+        } else {
+          const status = openAiRes.statusCode
+          if (status === 502 || status === 503) {
+            throw new Error(`HTTP ${status}`)
+          } else if (status >= 400 && status < 500) {
+            aiErrorMsg = `Erro na API OpenAI: ${status}`
+            $app
+              .logger()
+              .error(
+                'Erro OpenAI 4xx',
+                'status',
+                status,
+                'response',
+                JSON.stringify(openAiRes.json || {}),
+              )
+            break
+          } else {
+            throw new Error(`HTTP ${status}`)
+          }
         }
+      } catch (err) {
+        let isRetryable = true
 
         if (isRetryable && attempt < retries.length) {
           $app.logger().warn('IA Indisponível, tentando novamente', 'tentativa', attempt + 1)
