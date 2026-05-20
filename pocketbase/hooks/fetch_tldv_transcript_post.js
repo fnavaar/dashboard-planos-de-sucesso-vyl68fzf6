@@ -257,4 +257,34 @@ routerAdd(
     let createdCount = 0
     if (etapa_id) {
       const tarefas = parsedResult.tarefas || []
-      const collection = $app.findCol
+      const collection = $app.findCollectionByNameOrId('cards_execucao')
+
+      $app.runInTransaction((txApp) => {
+        for (const t of tarefas) {
+          try {
+            const card = new Record(collection)
+            card.set('etapa_id', etapa_id)
+            const oQue = t.titulo
+              ? t.titulo + '\n\n' + (t.o_que_foi_feito || '')
+              : t.o_que_foi_feito || 'Nova tarefa'
+            card.set('o_que_foi_feito', oQue.trim())
+            card.set('passos_seguidos', t.passos_seguidos || '')
+            card.set('como_foi_executado', 'Gerado automaticamente por IA a partir do TLDV')
+            card.set('quando_foi_executado', '')
+            card.set('responsavel', '')
+            txApp.save(card)
+            createdCount++
+          } catch (err) {
+            $app.logger().error('Erro ao salvar card de execução', 'erro', err.message)
+          }
+        }
+      })
+    }
+
+    return e.json(200, {
+      message: `Importação concluída. ${createdCount} tarefas adicionadas.`,
+      createdCount,
+    })
+  },
+  $apis.requireAuth(),
+)
