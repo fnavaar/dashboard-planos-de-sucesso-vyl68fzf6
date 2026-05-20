@@ -75,26 +75,48 @@ Dados:
 ${JSON.stringify(agentPayload)}
 `
 
-      let result
+      let rawContent = ''
       let retries = 0
-      while (retries < 2) {
+      let success = false
+      while (retries < 2 && !success) {
         try {
-          result = $ai.agent('agente-mapass').chat({
-            user_id: userId,
-            message: promptInstructions,
+          const res = $http.send({
+            url: 'https://api.openai.com/v1/chat/completions',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + $secrets.get('API_OPENAI'),
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [{ role: 'user', content: promptInstructions }],
+            }),
+            timeout: 30,
           })
-          break
+
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            rawContent = res.json?.choices?.[0]?.message?.content || ''
+            success = true
+          } else if (res.statusCode >= 400 && res.statusCode < 500) {
+            $app.logger().error('OpenAI 4xx Error', 'status', res.statusCode)
+            return e.json(500, { error: 'Erro de validação na chamada da IA.' })
+          } else if (res.statusCode === 502 || res.statusCode === 503) {
+            throw new Error(`OpenAI retriable HTTP error: ${res.statusCode}`)
+          } else {
+            $app.logger().error('OpenAI unexpected error', 'status', res.statusCode)
+            return e.json(500, { error: 'Erro inesperado da IA. Tente novamente mais tarde.' })
+          }
         } catch (err) {
           retries++
           if (retries >= 2) {
-            $app.logger().error('Erro ao chamar o agente após retentativa', 'error', err.message)
+            $app.logger().error('Erro ao chamar a OpenAI após retentativa', 'error', err.message)
             return e.json(500, { error: 'Erro de comunicação com a IA. Tente novamente.' })
           }
         }
       }
 
       let planData
-      let rawContent = (result.content || '').trim()
+      rawContent = rawContent.trim()
 
       // Limpeza de blocos de markdown
       if (rawContent.startsWith('```json')) {
