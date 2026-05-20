@@ -97,7 +97,7 @@ export default function ClientDetails() {
       }
     } catch (err: any) {
       if (err?.status === 404) {
-        toast.error('Cliente não encontrado ou removido.')
+        toast.error('Este cliente foi removido.')
         navigate('/')
         return
       }
@@ -113,7 +113,14 @@ export default function ClientDetails() {
 
   useRealtime('etapas', () => fetchData())
   useRealtime('planos', () => fetchData())
-  useRealtime('clientes', () => fetchData())
+  useRealtime('clientes', (e) => {
+    if (e.action === 'delete' && e.record.id === id) {
+      toast.error('Este cliente foi removido.')
+      navigate('/')
+      return
+    }
+    fetchData()
+  })
   useRealtime('cards_execucao', () => fetchData())
   useRealtime('historico_acoes', () => fetchData())
 
