@@ -6,9 +6,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, User, LogOut } from 'lucide-react'
+import { Plus, User, LogOut, Users } from 'lucide-react'
 import { useNewClient } from '@/contexts/NewClientContext'
 import { NewClientModal } from '@/components/NewClientModal'
 import { useTheme } from 'next-themes'
@@ -80,6 +81,15 @@ export default function Layout() {
                   {user?.name || 'Perfil'}
                 </div>
                 <div className="px-2 pb-1.5 text-xs text-slate-500 truncate">{user?.email}</div>
+                <DropdownMenuSeparator />
+                {user?.role === 'admin' && (
+                  <DropdownMenuItem
+                    onClick={() => navigate('/usuarios')}
+                    className="cursor-pointer"
+                  >
+                    <Users className="w-4 h-4 mr-2" /> Usuários
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   onClick={() => {
                     signOut()
