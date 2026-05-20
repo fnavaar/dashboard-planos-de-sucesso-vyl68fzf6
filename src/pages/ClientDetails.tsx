@@ -85,7 +85,16 @@ export default function ClientDetails() {
           .getFullList({ filter: `registro_id = "${id}" && tabela = "clientes"`, sort: '-created' })
         const errLog = hist.find((h: any) => h.dados_depois?.error)
         if (errLog) {
-          setGenerationError(errLog.dados_depois.error)
+          let errorMsg = errLog.dados_depois.error
+          if (
+            typeof errorMsg === 'string' &&
+            errorMsg.includes('kickoff_transcript') &&
+            errorMsg.includes('Must be no more than')
+          ) {
+            errorMsg =
+              'O transcrito da reunião é muito longo e excede o limite de 100.000 caracteres. Por favor, tente com uma reunião mais curta.'
+          }
+          setGenerationError(errorMsg)
           setIsGenerating(false)
         } else if (c.tldv_meeting_id && ps.length === 0) {
           setIsGenerating(true)
