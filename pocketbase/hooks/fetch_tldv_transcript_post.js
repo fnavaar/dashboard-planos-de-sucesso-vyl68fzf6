@@ -167,7 +167,7 @@ routerAdd(
 
     while (attempt <= retries.length) {
       try {
-        const prompt = `Objetivo da etapa: ${objetivo}\n\nTranscrição da reunião:\n${transcriptText.substring(0, 15000)}\n\nExtraia as ações e tarefas que precisam ser feitas. Retorne APENAS um objeto JSON válido, sem texto adicional, com a seguinte estrutura:
+        const prompt = `Objetivo da etapa: ${objetivo}\n\nTranscrição da reunião:\n${transcriptText.substring(0, 150000)}\n\nExtraia as ações e tarefas que precisam ser feitas. Retorne APENAS um objeto JSON válido, sem texto adicional, com a seguinte estrutura:
 {
   "tarefas": [
     {
@@ -188,7 +188,7 @@ routerAdd(
             model: 'gpt-4o',
             messages: [{ role: 'user', content: prompt }],
           }),
-          timeout: 30,
+          timeout: 120,
         })
 
         if (openAiRes.statusCode >= 200 && openAiRes.statusCode < 300) {

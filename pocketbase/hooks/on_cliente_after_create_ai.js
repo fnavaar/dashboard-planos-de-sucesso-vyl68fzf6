@@ -71,7 +71,7 @@ Retorne EXCLUSIVAMENTE um objeto JSON no formato exato:
 }
 
 Transcrito:
-${transcript.substring(0, 50000)}`
+${transcript.substring(0, 150000)}`
 
     const openAiKey = $secrets.get('API_OPENAI')
     if (!openAiKey) {
@@ -89,7 +89,7 @@ ${transcript.substring(0, 50000)}`
         model: 'gpt-4o',
         messages: [{ role: 'user', content: prompt }],
       }),
-      timeout: 30,
+      timeout: 120,
     })
 
     if (aiRes.statusCode !== 200) {
