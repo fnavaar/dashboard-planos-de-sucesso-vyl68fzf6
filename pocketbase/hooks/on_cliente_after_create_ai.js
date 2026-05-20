@@ -31,7 +31,7 @@ onRecordAfterCreateSuccess((e) => {
           hist.set('user_id', e.record.getString('user_id'))
           hist.set('tabela', 'clientes')
           hist.set('registro_id', e.record.id)
-          hist.set('acao', 'update')
+          hist.set('acao', 'create')
           hist.set('dados_depois', {
             error: 'Falha ao buscar transcrito do TLDV. Status: ' + transRes.statusCode,
           })
@@ -73,12 +73,30 @@ Retorne EXCLUSIVAMENTE um objeto JSON no formato exato:
 Transcrito:
 ${transcript.substring(0, 50000)}`
 
-    const res = $ai.chat({
-      model: 'fast',
-      messages: [{ role: 'user', content: prompt }],
+    const openAiKey = $secrets.get('API_OPENAI')
+    if (!openAiKey) {
+      throw new Error('API_OPENAI secret is not configured')
+    }
+
+    const aiRes = $http.send({
+      url: 'https://api.openai.com/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${openAiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      timeout: 30,
     })
 
-    const content = res.choices[0].message.content
+    if (aiRes.statusCode !== 200) {
+      throw new Error('Falha na API OpenAI. Status: ' + aiRes.statusCode)
+    }
+
+    const content = aiRes.json.choices[0].message.content
     let planData
     try {
       const match = content.match(/\{[\s\S]*\}/)
@@ -94,7 +112,7 @@ ${transcript.substring(0, 50000)}`
       hist.set('user_id', e.record.getString('user_id'))
       hist.set('tabela', 'clientes')
       hist.set('registro_id', e.record.id)
-      hist.set('acao', 'update')
+      hist.set('acao', 'create')
       hist.set('dados_depois', {
         error: 'Falha ao processar a resposta da IA. O formato retornado não era um JSON válido.',
       })
@@ -176,7 +194,7 @@ ${transcript.substring(0, 50000)}`
       hist.set('user_id', e.record.getString('user_id'))
       hist.set('tabela', 'clientes')
       hist.set('registro_id', e.record.id)
-      hist.set('acao', 'update')
+      hist.set('acao', 'create')
       hist.set('dados_depois', {
         error: 'Falha durante a execução do processo de IA: ' + err.message,
       })
