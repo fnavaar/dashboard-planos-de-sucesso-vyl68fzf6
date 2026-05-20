@@ -95,12 +95,17 @@ export default function ClientDetails() {
       } catch (err) {
         // fail silently for history
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.status === 404) {
+        toast.error('Cliente não encontrado ou removido.')
+        navigate('/')
+        return
+      }
       setError(true)
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [id, navigate])
 
   useEffect(() => {
     fetchData()
