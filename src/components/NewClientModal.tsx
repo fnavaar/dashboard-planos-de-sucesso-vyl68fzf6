@@ -66,32 +66,11 @@ export function NewClientModal() {
 
     setIsSubmitting(true)
     try {
-      let transcript = ''
       let finalTldvId = values.tldv_meeting_id?.trim()
 
       if (finalTldvId) {
         const match = finalTldvId.match(/tldv\.io\/app\/meetings\/([a-zA-Z0-9_-]+)/)
         finalTldvId = match ? match[1] : finalTldvId
-
-        try {
-          const res = await pb.send('/backend/v1/fetch-tldv-transcript', {
-            method: 'POST',
-            body: JSON.stringify({ tldv_meeting_id: finalTldvId }),
-          })
-          if (res?.data?.o_que_foi_feito) {
-            transcript = `Resumo:\n${res.data.o_que_foi_feito}\n\nMetodologia/Ferramentas:\n${res.data.como_foi_executado}`
-          } else {
-            transcript = res?.transcript || res?.text || JSON.stringify(res) || ''
-          }
-        } catch (e) {
-          console.error('Error fetching single transcript', e)
-          toast({
-            title: 'Aviso',
-            description:
-              'ID inválido ou reunião não encontrada. O cliente será criado sem o resumo automático.',
-            variant: 'destructive',
-          })
-        }
       }
 
       await createCliente({
@@ -102,16 +81,15 @@ export function NewClientModal() {
         status: 'ativo',
         progresso: 0,
         user_id: user?.id,
-        tldv_meeting_id: finalTldvId,
-        kickoff_transcript: transcript,
+        tldv_meeting_id: finalTldvId || '',
       })
 
-      if (transcript) {
+      if (finalTldvId) {
         toast({
           title: 'Cliente criado com sucesso!',
           description: 'O plano de sucesso será gerado pela IA em instantes.',
         })
-      } else if (!finalTldvId) {
+      } else {
         toast({ title: 'Cliente criado com sucesso!' })
       }
 

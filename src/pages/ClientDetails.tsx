@@ -6,7 +6,7 @@ import { getEtapas, Etapa } from '@/services/etapas'
 import { getCardsExecucao, CardExecucao } from '@/services/cards_execucao'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Target, BookOpen, Edit, Map } from 'lucide-react'
+import { ArrowLeft, Target, BookOpen, Edit, Map, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { updateEtapa } from '@/services/etapas'
 import { Label } from '@/components/ui/label'
@@ -41,6 +41,8 @@ export default function ClientDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [selectedEtapa, setSelectedEtapa] = useState<Etapa | null>(null)
@@ -73,6 +75,26 @@ export default function ClientDetails() {
         setEtapas([])
         setCards([])
       }
+
+      try {
+        const { default: pb } = await import('@/lib/pocketbase/client')
+        const hist = await pb
+          .collection('historico_acoes')
+          .getFullList({ filter: `registro_id = "${id}" && tabela = "clientes"`, sort: '-created' })
+        const errLog = hist.find((h: any) => h.dados_depois?.error)
+        if (errLog) {
+          setGenerationError(errLog.dados_depois.error)
+          setIsGenerating(false)
+        } else if (c.tldv_meeting_id && ps.length === 0) {
+          setIsGenerating(true)
+          setGenerationError(null)
+        } else {
+          setIsGenerating(false)
+          setGenerationError(null)
+        }
+      } catch (err) {
+        // fail silently for history
+      }
     } catch (err) {
       setError(true)
     } finally {
@@ -88,12 +110,40 @@ export default function ClientDetails() {
   useRealtime('planos', () => fetchData())
   useRealtime('clientes', () => fetchData())
   useRealtime('cards_execucao', () => fetchData())
+  useRealtime('historico_acoes', () => fetchData())
 
   if (loading && !client) return <LoadingState />
   if (error || !client) return <ErrorState onBack={() => navigate('/')} />
 
   return (
     <div className="space-y-8 animate-fade-in pb-10">
+      {isGenerating && (
+        <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6 flex flex-col items-center justify-center text-center mb-6">
+          <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
+          <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-100">
+            Gerando Estratégia do Cliente...
+          </h3>
+          <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-2 max-w-md mx-auto">
+            A Inteligência Artificial está analisando o transcrito da reunião, estruturando o plano
+            de sucesso e criando todas as etapas e tarefas para você. Isso pode levar alguns
+            minutos.
+          </p>
+        </div>
+      )}
+
+      {generationError && (
+        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl p-6 flex flex-col items-center justify-center text-center mb-6">
+          <h3 className="text-lg font-bold text-red-900 dark:text-red-100">
+            Falha ao Gerar Estratégia
+          </h3>
+          <p className="text-sm text-red-700 dark:text-red-300 mt-2 max-w-md mx-auto">
+            {generationError}
+          </p>
+          <Button variant="outline" className="mt-4" onClick={() => fetchData()}>
+            Tentar Novamente (Recarregar)
+          </Button>
+        </div>
+      )}
       <Confetti active={showConfetti} />
       <div className="flex justify-between items-center -ml-4">
         <Button

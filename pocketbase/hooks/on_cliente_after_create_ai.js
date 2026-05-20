@@ -1,24 +1,74 @@
 onRecordAfterCreateSuccess((e) => {
-  const transcript = e.record.getString('kickoff_transcript')
-  if (!transcript) return e.next()
+  let transcript = e.record.getString('kickoff_transcript')
+  const tldvIdRaw = e.record.getString('tldv_meeting_id')
+
+  if (!transcript && !tldvIdRaw) return e.next()
 
   try {
-    const prompt = `Analise o seguinte transcrito de reunião de kickoff e extraia as informações para criar um plano de sucesso estruturado.
+    if (!transcript && tldvIdRaw) {
+      const match = tldvIdRaw.match(/tldv\.io\/app\/meetings\/([a-zA-Z0-9_-]+)/)
+      const tldv_meeting_id = match ? match[1] : tldvIdRaw.trim()
+
+      const tldvKey = $secrets.get('API_TLDV')
+      if (tldvKey && tldv_meeting_id) {
+        const transRes = $http.send({
+          url: `https://pasta.tldv.io/v1alpha1/meetings/${tldv_meeting_id}/transcript`,
+          method: 'GET',
+          headers: { 'x-api-key': tldvKey, 'Content-Type': 'application/json' },
+          timeout: 30,
+        })
+        if (transRes.statusCode === 200) {
+          if (transRes.json) {
+            transcript =
+              typeof transRes.json === 'string' ? transRes.json : JSON.stringify(transRes.json)
+          } else {
+            transcript = new TextDecoder().decode(transRes.body)
+          }
+        } else {
+          $app.logger().error('TLDV Fetch failed in hook', 'status', transRes.statusCode)
+          const histCol = $app.findCollectionByNameOrId('historico_acoes')
+          const hist = new Record(histCol)
+          hist.set('user_id', e.record.getString('user_id'))
+          hist.set('tabela', 'clientes')
+          hist.set('registro_id', e.record.id)
+          hist.set('acao', 'update')
+          hist.set('dados_depois', {
+            error: 'Falha ao buscar transcrito do TLDV. Status: ' + transRes.statusCode,
+          })
+          $app.save(hist)
+          return e.next()
+        }
+      }
+    }
+
+    if (!transcript) return e.next()
+
+    const prompt = `Analise o seguinte transcrito de reunião e extraia as informações para criar um plano de sucesso estruturado.
 
 Retorne EXCLUSIVAMENTE um objeto JSON no formato exato:
 {
   "objetivo_principal": "string com o principal objetivo do cliente",
   "contexto": "string com o contexto geral, dores e situação atual",
-  "etapas": [
-    {
-      "titulo": "string",
-      "descricao": "string",
-      "objetivo": "string",
-      "tempo_estimado": "string"
-    }
-  ]
+  "plano": {
+    "titulo": "string com o nome do plano",
+    "descricao": "string com a descricao do plano",
+    "etapas": [
+      {
+        "titulo": "string",
+        "descricao": "string",
+        "objetivo": "string",
+        "tempo_estimado": "string",
+        "tasks": [
+          {
+            "o_que_foi_feito": "string com o que precisa ser feito",
+            "passos_seguidos": "string com passos detalhados",
+            "como_foi_executado": "string opcional com ferramentas sugeridas"
+          }
+        ]
+      }
+    ]
+  }
 }
-Gere entre 5 a 7 etapas coerentes baseadas estritamente na reunião.
 
 Transcrito:
 ${transcript.substring(0, 50000)}`
@@ -39,6 +89,16 @@ ${transcript.substring(0, 50000)}`
       }
     } catch (parseErr) {
       $app.logger().error('Falha no parse do JSON da AI', 'content', content)
+      const histCol = $app.findCollectionByNameOrId('historico_acoes')
+      const hist = new Record(histCol)
+      hist.set('user_id', e.record.getString('user_id'))
+      hist.set('tabela', 'clientes')
+      hist.set('registro_id', e.record.id)
+      hist.set('acao', 'update')
+      hist.set('dados_depois', {
+        error: 'Falha ao processar a resposta da IA. O formato retornado não era um JSON válido.',
+      })
+      $app.save(hist)
       return e.next()
     }
 
@@ -56,35 +116,74 @@ ${transcript.substring(0, 50000)}`
         clientUpdated = true
       }
 
+      if (!client.getString('kickoff_transcript') && transcript) {
+        client.set('kickoff_transcript', transcript)
+        clientUpdated = true
+      }
+
       if (clientUpdated) {
         txApp.save(client)
       }
 
-      if (planData.etapas && planData.etapas.length > 0) {
+      if (planData.plano) {
         const planosCol = txApp.findCollectionByNameOrId('planos')
         const plan = new Record(planosCol)
         plan.set('cliente_id', client.id)
-        plan.set('titulo', 'Plano de Sucesso: ' + client.getString('nome'))
+        plan.set('titulo', planData.plano.titulo || 'Plano de Sucesso: ' + client.getString('nome'))
+        plan.set('descricao', planData.plano.descricao || '')
         plan.set('status', 'ativo')
         txApp.save(plan)
 
-        const etapasCol = txApp.findCollectionByNameOrId('etapas')
-        for (let i = 0; i < planData.etapas.length; i++) {
-          const s = planData.etapas[i]
-          const etapa = new Record(etapasCol)
-          etapa.set('plano_id', plan.id)
-          etapa.set('titulo', s.titulo || 'Etapa ' + (i + 1))
-          etapa.set('descricao', s.descricao || '')
-          etapa.set('objetivo', s.objetivo || '')
-          etapa.set('tempo_estimado', s.tempo_estimado || '')
-          etapa.set('ordem', i + 1)
-          etapa.set('status', 'a_fazer')
-          txApp.save(etapa)
+        if (planData.plano.etapas && Array.isArray(planData.plano.etapas)) {
+          const etapasCol = txApp.findCollectionByNameOrId('etapas')
+          const cardsCol = txApp.findCollectionByNameOrId('cards_execucao')
+
+          for (let i = 0; i < planData.plano.etapas.length; i++) {
+            const s = planData.plano.etapas[i]
+            const etapa = new Record(etapasCol)
+            etapa.set('plano_id', plan.id)
+            etapa.set('titulo', s.titulo || 'Etapa ' + (i + 1))
+            etapa.set('descricao', s.descricao || '')
+            etapa.set('objetivo', s.objetivo || '')
+            etapa.set('tempo_estimado', s.tempo_estimado || '')
+            etapa.set('ordem', i + 1)
+            etapa.set('status', 'a_fazer')
+            txApp.save(etapa)
+
+            if (s.tasks && Array.isArray(s.tasks)) {
+              for (let j = 0; j < s.tasks.length; j++) {
+                const t = s.tasks[j]
+                const card = new Record(cardsCol)
+                card.set('etapa_id', etapa.id)
+                card.set('o_que_foi_feito', t.o_que_foi_feito || 'Nova tarefa')
+                card.set('passos_seguidos', t.passos_seguidos || '')
+                card.set(
+                  'como_foi_executado',
+                  t.como_foi_executado || 'Gerado automaticamente por IA',
+                )
+                txApp.save(card)
+              }
+            }
+          }
         }
       }
     })
   } catch (err) {
     $app.logger().error('Erro na análise do kickoff via AI', 'error', err.message)
+    try {
+      const histCol = $app.findCollectionByNameOrId('historico_acoes')
+      const hist = new Record(histCol)
+      hist.set('user_id', e.record.getString('user_id'))
+      hist.set('tabela', 'clientes')
+      hist.set('registro_id', e.record.id)
+      hist.set('acao', 'update')
+      hist.set('dados_depois', {
+        error: 'Falha durante a execução do processo de IA: ' + err.message,
+      })
+      $app.save(hist)
+    } catch (err2) {
+      $app.logger().error('Falha ao salvar historico de erro', 'error', err2.message)
+    }
   }
 
   return e.next()
