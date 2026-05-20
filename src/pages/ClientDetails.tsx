@@ -471,10 +471,4 @@ function LoadingState() {
 function ErrorState({ onBack }: { onBack: () => void }) {
   return (
     <div className="text-center py-20 flex flex-col items-center">
-      <h2 className="text-2xl font-bold mb-4">Erro ao carregar dados</h2>
-      <Button onClick={onBack} variant="outline">
-        Voltar para o Dashboard
-      </Button>
-    </div>
-  )
-}
+      <h2 className="text-2xl font-bold mb-4">
