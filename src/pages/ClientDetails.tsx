@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getCliente, Cliente } from '@/services/clients'
 import { getPlanos, Plano, updatePlano } from '@/services/planos'
@@ -52,8 +52,10 @@ export default function ClientDetails() {
   const { user } = useAuth()
   const canEdit = user?.role === 'admin' || (client && user?.id === client.user_id)
 
+  const isDeletedRef = useRef(false)
+
   const fetchData = useCallback(async () => {
-    if (!id) return
+    if (!id || isDeletedRef.current) return
     try {
       const c = await getCliente(id)
       setClient(c)
@@ -97,8 +99,11 @@ export default function ClientDetails() {
       }
     } catch (err: any) {
       if (err?.status === 404) {
-        toast.error('Este cliente foi removido.')
-        navigate('/')
+        if (!isDeletedRef.current) {
+          isDeletedRef.current = true
+          toast.error('Este cliente foi removido.')
+          navigate('/')
+        }
         return
       }
       setError(true)
@@ -115,8 +120,11 @@ export default function ClientDetails() {
   useRealtime('planos', () => fetchData())
   useRealtime('clientes', (e) => {
     if (e.action === 'delete' && e.record.id === id) {
-      toast.error('Este cliente foi removido.')
-      navigate('/')
+      if (!isDeletedRef.current) {
+        isDeletedRef.current = true
+        toast.error('Este cliente foi removido.')
+        navigate('/')
+      }
       return
     }
     fetchData()
