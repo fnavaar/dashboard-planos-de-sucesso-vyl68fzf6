@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Cliente } from '@/services/clients'
 import { Plano } from '@/services/planos'
 import { Etapa, updateEtapaStatus } from '@/services/etapas'
