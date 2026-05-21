@@ -4,7 +4,16 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { CalendarIcon, Plus, Trash2, CheckCircle2, AlertCircle, Bot, Loader2 } from 'lucide-react'
+import {
+  CalendarIcon,
+  Plus,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  Bot,
+  Loader2,
+  Upload,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import pb from '@/lib/pocketbase/client'
 
@@ -122,6 +131,9 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const [hasTldvImport, setHasTldvImport] = useState(false)
   const [tldvError, setTldvError] = useState<string | null>(null)
 
+  const [newFiles, setNewFiles] = useState<File[]>([])
+  const [deletedFiles, setDeletedFiles] = useState<string[]>([])
+
   const handleImportTldv = async () => {
     if (!tldvMeetingId.trim()) return
 
@@ -183,6 +195,8 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     if (!open) return
     setLoading(true)
     setError(false)
+    setNewFiles([])
+    setDeletedFiles([])
     try {
       const [uList, card] = await Promise.all([getUsers(), getCardExecucaoByEtapa(etapa.id)])
       setUsersList(uList)
@@ -224,7 +238,33 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
 
   const hasEvidence =
     !!watched.o_que_foi_feito?.trim() ||
-    !!(watched.anexos && watched.anexos.some((a) => a.url?.trim() !== ''))
+    !!(watched.anexos && watched.anexos.some((a) => a.url?.trim() !== '')) ||
+    newFiles.length > 0 ||
+    (record?.arquivos_evidencia && record.arquivos_evidencia.length - deletedFiles.length > 0)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+      const validFiles = files.filter((f) => f.size <= 5242880) // 5MB
+      if (validFiles.length < files.length) {
+        toast.error('Alguns arquivos excedem o limite de 5MB e foram ignorados.')
+      }
+      setNewFiles((prev) => [...prev, ...validFiles])
+    }
+    e.target.value = ''
+  }
+
+  const removeNewFile = (index: number) => {
+    setNewFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const removeExistingFile = (filename: string) => {
+    setDeletedFiles((prev) => [...prev, filename])
+  }
+
+  const getFileUrl = (filename: string) => {
+    return `${import.meta.env.VITE_POCKETBASE_URL}/api/files/cards_execucao/${record?.id}/${filename}`
+  }
 
   const defaultValuesStr = useMemo(() => {
     const defAnexos =
@@ -266,17 +306,22 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     setSaving(true)
     setSaveError(false)
     try {
-      const payload = {
-        etapa_id: etapa.id,
-        o_que_foi_feito: data.o_que_foi_feito || '',
-        passos_seguidos: data.passos_seguidos || '',
-        como_foi_executado: data.como_foi_executado || '',
-        quando_foi_executado: data.quando_foi_executado
-          ? data.quando_foi_executado.toISOString()
-          : '',
-        responsavel: data.responsavel || '',
-        anexos: data.anexos ? data.anexos.map((a) => a.url).filter((u) => u.trim() !== '') : [],
-      }
+      const payload = new FormData()
+      payload.append('etapa_id', etapa.id)
+      if (data.o_que_foi_feito) payload.append('o_que_foi_feito', data.o_que_foi_feito)
+      if (data.passos_seguidos) payload.append('passos_seguidos', data.passos_seguidos)
+      if (data.como_foi_executado) payload.append('como_foi_executado', data.como_foi_executado)
+      if (data.quando_foi_executado)
+        payload.append('quando_foi_executado', data.quando_foi_executado.toISOString())
+      if (data.responsavel) payload.append('responsavel', data.responsavel)
+
+      const validAnexos = data.anexos
+        ? data.anexos.map((a) => a.url).filter((u) => u.trim() !== '')
+        : []
+      payload.append('anexos', JSON.stringify(validAnexos))
+
+      newFiles.forEach((f) => payload.append('arquivos_evidencia', f))
+      deletedFiles.forEach((f) => payload.append('arquivos_evidencia-', f))
 
       let savedRecord: CardExecucao
       if (record?.id) {
@@ -532,7 +577,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
               </div>
 
               <div className="space-y-4">
-                <Label>Anexos / Evidências</Label>
+                <Label>Links Úteis</Label>
                 {fields.map((field, index) => (
                   <FormField
                     key={field.id}
@@ -571,6 +616,81 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                     <Plus className="h-4 w-4 mr-2" /> Adicionar Link
                   </Button>
                 )}
+
+                <div className="pt-4 border-t mt-6">
+                  <Label className="mb-4 block">Arquivos (Documentos e Imagens)</Label>
+                  {record?.arquivos_evidencia &&
+                    record.arquivos_evidencia
+                      .filter((f) => !deletedFiles.includes(f))
+                      .map((f) => (
+                        <div
+                          key={f}
+                          className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 p-2 rounded text-sm mb-2 border border-slate-200 dark:border-slate-800"
+                        >
+                          <a
+                            href={getFileUrl(f)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:underline truncate mr-2"
+                          >
+                            {f}
+                          </a>
+                          {canEdit && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeExistingFile(f)}
+                              className="h-6 w-6 text-red-500 hover:bg-red-50 hover:text-red-600"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+
+                  {newFiles.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded text-sm mb-2 border border-indigo-100 dark:border-indigo-800/30"
+                    >
+                      <span className="truncate mr-2 text-indigo-700 dark:text-indigo-300">
+                        {f.name}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeNewFile(i)}
+                        className="h-6 w-6 text-red-500 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  {canEdit && (
+                    <div className="mt-4">
+                      <Label
+                        htmlFor="file-upload"
+                        className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
+                      >
+                        <Upload className="w-4 h-4 mr-2" /> Anexar Arquivos
+                      </Label>
+                      <input
+                        id="file-upload"
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileChange}
+                        accept="image/png, image/jpeg, application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      />
+                      <p className="text-xs text-slate-500 mt-2">
+                        Imagens e Documentos (Máx 5MB por arquivo)
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </form>
           </Form>

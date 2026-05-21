@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getCliente, Cliente } from '@/services/clients'
+import { getCliente, Cliente, updateCliente } from '@/services/clients'
 import { getPlanos, Plano, updatePlano } from '@/services/planos'
 import { getEtapas, Etapa } from '@/services/etapas'
 import { getCardsExecucao, CardExecucao } from '@/services/cards_execucao'
@@ -53,6 +53,9 @@ export default function ClientDetails() {
   const [editingEtapa, setEditingEtapa] = useState<Etapa | null>(null)
   const [editingPlano, setEditingPlano] = useState<Plano | null>(null)
 
+  const [editingInsights, setEditingInsights] = useState(false)
+  const [insightData, setInsightData] = useState({ objetivo_principal: '', contexto: '' })
+
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const isClient = !isAdmin
@@ -63,6 +66,10 @@ export default function ClientDetails() {
       .filter((e) => e.status !== 'concluido')
       .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))[0]?.ordem ?? Infinity
 
+  const visibleEtapas = isAdmin
+    ? localEtapas
+    : localEtapas.filter((e) => (e.ordem || 0) <= firstUncompletedOrdem)
+
   const isDeletedRef = useRef(false)
 
   const fetchData = useCallback(async () => {
@@ -71,6 +78,17 @@ export default function ClientDetails() {
       const { getClienteByEmail } = await import('@/services/clients')
       const c = await getClienteByEmail(email)
       setClient(c)
+      setInsightData({
+        objetivo_principal: c.objetivo_principal || '',
+        contexto: c.contexto || '',
+      })
+      if (
+        !c.objetivo_principal &&
+        !c.contexto &&
+        (!c.user_id || user?.id === c.user_id || user?.role === 'admin')
+      ) {
+        setEditingInsights(true)
+      }
 
       const ps = await getPlanos(c.id)
       if (ps.length > 0) {
@@ -167,6 +185,18 @@ export default function ClientDetails() {
         setDraggedIndex(index)
         return newList
       })
+    }
+  }
+
+  const saveInsights = async () => {
+    if (!client) return
+    try {
+      await updateCliente(client.id, insightData)
+      toast.success('Mapeamento atualizado com sucesso!')
+      setEditingInsights(false)
+      fetchData()
+    } catch (err) {
+      toast.error('Erro ao atualizar mapeamento.')
     }
   }
 
@@ -295,40 +325,75 @@ export default function ClientDetails() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-dashed">
-          <CardHeader className="pb-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-dashed relative">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
               <Target className="w-5 h-5 text-indigo-500" /> Objetivo Principal
             </CardTitle>
+            {canEdit && !editingInsights && (
+              <Button variant="ghost" size="sm" onClick={() => setEditingInsights(true)}>
+                <Edit className="w-4 h-4" />
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
-            <p className="text-slate-700 dark:text-slate-300">
-              {client.objetivo_principal || 'Nenhum objetivo definido.'}
-            </p>
+            {editingInsights ? (
+              <Input
+                value={insightData.objetivo_principal}
+                onChange={(e) =>
+                  setInsightData({ ...insightData, objetivo_principal: e.target.value })
+                }
+                placeholder="Qual o seu objetivo principal?"
+              />
+            ) : (
+              <p className="text-slate-700 dark:text-slate-300">
+                {client.objetivo_principal || 'Nenhum objetivo definido.'}
+              </p>
+            )}
           </CardContent>
         </Card>
-        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-dashed">
-          <CardHeader className="pb-2">
+        <Card className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-dashed relative">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2 text-indigo-900 dark:text-indigo-100">
               <BookOpen className="w-5 h-5 text-indigo-500" /> Contexto
             </CardTitle>
+            {canEdit && !editingInsights && (
+              <Button variant="ghost" size="sm" onClick={() => setEditingInsights(true)}>
+                <Edit className="w-4 h-4" />
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
-            <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
-              {client.contexto || 'Nenhum contexto definido.'}
-            </p>
+            {editingInsights ? (
+              <Textarea
+                value={insightData.contexto}
+                onChange={(e) => setInsightData({ ...insightData, contexto: e.target.value })}
+                placeholder="Descreva o contexto atual..."
+                className="min-h-[100px]"
+              />
+            ) : (
+              <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
+                {client.contexto || 'Nenhum contexto definido.'}
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {localEtapas.length > 0 && (
+      {editingInsights && canEdit && (
+        <div className="flex justify-end mb-6">
+          <Button onClick={saveInsights}>Salvar Mapeamento</Button>
+        </div>
+      )}
+
+      {visibleEtapas.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 px-1">
             Mapeamento Estratégico
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {localEtapas.map((etapa, index) => {
+            {visibleEtapas.map((etapa, index) => {
               const isLocked = isClient && (etapa.ordem || 0) > firstUncompletedOrdem
               return (
                 <Card
@@ -445,12 +510,12 @@ export default function ClientDetails() {
         />
       )}
 
-      <ProgressMap plano={plano} etapas={localEtapas} />
+      <ProgressMap plano={plano} etapas={visibleEtapas} />
 
       <KanbanBoard
         client={client}
         plano={plano}
-        etapas={localEtapas}
+        etapas={visibleEtapas}
         cards={cards}
         onUpdate={fetchData}
         onConfetti={() => {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-21T15:21:52.995Z",
+  "generatedAt": "2026-05-21T15:28:58.362Z",
   "collections": [
     {
       "name": "users",
@@ -328,6 +328,12 @@
           "required": false,
           "system": false,
           "autodateTriggers": ["onCreate", "onUpdate"]
+        },
+        {
+          "name": "arquivos_evidencia",
+          "type": "file",
+          "required": false,
+          "system": false
         }
       ],
       "indexes": []

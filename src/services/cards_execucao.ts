@@ -9,6 +9,7 @@ export interface CardExecucao {
   quando_foi_executado?: string
   responsavel?: string
   anexos?: string[]
+  arquivos_evidencia?: string[]
 }
 
 export async function getCardExecucaoByEtapa(etapaId: string): Promise<CardExecucao | null> {
@@ -28,11 +29,11 @@ export async function getCardsExecucao(etapaIds: string[]): Promise<CardExecucao
   return pb.collection('cards_execucao').getFullList<CardExecucao>({ filter })
 }
 
-export async function createCardExecucao(data: Partial<CardExecucao>) {
+export async function createCardExecucao(data: Partial<CardExecucao> | FormData) {
   return pb.collection('cards_execucao').create<CardExecucao>(data)
 }
 
-export async function updateCardExecucao(id: string, data: Partial<CardExecucao>) {
+export async function updateCardExecucao(id: string, data: Partial<CardExecucao> | FormData) {
   return pb.collection('cards_execucao').update<CardExecucao>(id, data)
 }
 
