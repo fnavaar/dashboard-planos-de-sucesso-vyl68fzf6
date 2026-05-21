@@ -29,6 +29,13 @@ export const getCliente = (id: string) =>
   pb.collection('clientes').getOne<Cliente>(id, { expand: 'user_id' })
 
 export const getClienteByEmail = async (identifier: string) => {
+  const authRecord = pb.authStore.record
+  if (authRecord && authRecord.role !== 'admin') {
+    return pb
+      .collection('clientes')
+      .getFirstListItem<Cliente>(`user_id = "${authRecord.id}"`, { expand: 'user_id' })
+  }
+
   if (identifier.includes('@')) {
     return pb
       .collection('clientes')

@@ -7,12 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Search, FolderOpen, RefreshCcw, Filter, Users, TrendingUp } from 'lucide-react'
+import { Search, FolderOpen, RefreshCcw, Filter, Users, TrendingUp, Target } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useNewClient } from '@/contexts/NewClientContext'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -49,6 +50,7 @@ export default function Index() {
   const [statusFilter, setStatusFilter] = useState<string>('Todos')
   const navigate = useNavigate()
   const { setIsOpen } = useNewClient()
+  const { user } = useAuth()
 
   const loadData = async () => {
     try {
@@ -70,6 +72,12 @@ export default function Index() {
       }
 
       const data = await getClientes(filter, '-created')
+
+      if (user?.role !== 'admin' && data.length > 0) {
+        navigate('/cliente/me', { replace: true })
+        return
+      }
+
       setClients(data)
     } catch (err) {
       setError(true)
@@ -206,18 +214,33 @@ export default function Index() {
         ) : clients.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
             <div className="bg-indigo-50 dark:bg-indigo-500/20 p-5 rounded-full mb-6">
-              <FolderOpen className="w-10 h-10 text-indigo-500" />
+              {user?.role === 'admin' ? (
+                <FolderOpen className="w-10 h-10 text-indigo-500" />
+              ) : (
+                <Target className="w-10 h-10 text-indigo-500" />
+              )}
             </div>
-            <h2 className="text-2xl font-extrabold mb-3">Nenhum cliente por aqui</h2>
-            <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-sm">
-              Adicione seu primeiro cliente para começar a acompanhar o progresso!
-            </p>
-            <Button
-              onClick={() => setIsOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold h-12 px-8 shadow-md hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
-            >
-              Novo Cliente
-            </Button>
+            {user?.role === 'admin' ? (
+              <>
+                <h2 className="text-2xl font-extrabold mb-3">Nenhum cliente por aqui</h2>
+                <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-sm">
+                  Adicione seu primeiro cliente para começar a acompanhar o progresso!
+                </p>
+                <Button
+                  onClick={() => setIsOpen(true)}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold h-12 px-8 shadow-md hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
+                >
+                  Novo Cliente
+                </Button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-extrabold mb-3">Bem-vindo(a)!</h2>
+                <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-sm">
+                  Seu plano de sucesso está sendo configurado. Em breve ele aparecerá aqui.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

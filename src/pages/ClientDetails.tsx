@@ -116,7 +116,9 @@ export default function ClientDetails() {
       if (err?.status === 404) {
         if (!isDeletedRef.current) {
           isDeletedRef.current = true
-          toast.error('Este cliente foi removido.')
+          if (user?.role === 'admin') {
+            toast.error('Este cliente foi removido.')
+          }
           navigate('/')
         }
         return
@@ -189,7 +191,9 @@ export default function ClientDetails() {
     if (e.action === 'delete' && client && e.record.id === client.id) {
       if (!isDeletedRef.current) {
         isDeletedRef.current = true
-        toast.error('Este cliente foi removido.')
+        if (user?.role === 'admin') {
+          toast.error('Este cliente foi removido.')
+        }
         navigate('/')
       }
       return
@@ -232,15 +236,17 @@ export default function ClientDetails() {
         </div>
       )}
       <Confetti active={showConfetti} />
-      <div className="flex justify-between items-center -ml-4">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/')}
-          className="text-slate-500 hover:text-slate-900"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
-        </Button>
-      </div>
+      {user?.role === 'admin' && (
+        <div className="flex justify-between items-center -ml-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/')}
+            className="text-slate-500 hover:text-slate-900"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
+          </Button>
+        </div>
+      )}
 
       <ClientHeader
         client={client}
