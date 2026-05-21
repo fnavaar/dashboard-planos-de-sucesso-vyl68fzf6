@@ -569,6 +569,4 @@ function TaskDialog({
           )}
         </form>
       </DialogContent>
-    </Dialog>
-  )
-}
+    </Dia
