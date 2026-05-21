@@ -29,17 +29,12 @@ export const getCliente = (id: string) =>
   pb.collection('clientes').getOne<Cliente>(id, { expand: 'user_id' })
 
 export const getClienteByEmail = async (identifier: string) => {
-  try {
-    return await pb
+  if (identifier.includes('@')) {
+    return pb
       .collection('clientes')
       .getFirstListItem<Cliente>(`user_id.email = "${identifier}"`, { expand: 'user_id' })
-  } catch (err: any) {
-    // Fallback to fetch by ID if identifier is not an email
-    if (err?.status === 404) {
-      return await pb.collection('clientes').getOne<Cliente>(identifier, { expand: 'user_id' })
-    }
-    throw err
   }
+  return pb.collection('clientes').getOne<Cliente>(identifier, { expand: 'user_id' })
 }
 
 export const createCliente = (data: Partial<Cliente>) =>
