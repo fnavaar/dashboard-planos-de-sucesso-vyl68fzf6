@@ -18,7 +18,6 @@ export async function createUser(data: any) {
   return pb.collection('users').create({
     ...data,
     passwordConfirm: data.password,
-    verified: true,
   })
 }
 

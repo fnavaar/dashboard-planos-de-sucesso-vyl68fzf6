@@ -85,12 +85,10 @@ export default function ClientDetails() {
 
       try {
         const { default: pb } = await import('@/lib/pocketbase/client')
-        const hist = await pb
-          .collection('historico_acoes')
-          .getFullList({
-            filter: `registro_id = "${c.id}" && tabela = "clientes"`,
-            sort: '-created',
-          })
+        const hist = await pb.collection('historico_acoes').getFullList({
+          filter: `registro_id = "${c.id}" && tabela = "clientes"`,
+          sort: '-created',
+        })
         const errLog = hist.find((h: any) => h.dados_depois?.error)
         if (errLog) {
           let errorMsg = errLog.dados_depois.error
