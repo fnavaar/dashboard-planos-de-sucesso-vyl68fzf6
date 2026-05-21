@@ -6,9 +6,10 @@ import { getEtapas, Etapa } from '@/services/etapas'
 import { getCardsExecucao, CardExecucao } from '@/services/cards_execucao'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Target, BookOpen, Edit, Map, Loader2 } from 'lucide-react'
+import { ArrowLeft, Target, BookOpen, Edit, Map, Loader2, GripVertical } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { updateEtapa } from '@/services/etapas'
+import { cn } from '@/lib/utils'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { extractFieldErrors } from '@/lib/pocketbase/errors'
@@ -36,7 +37,10 @@ export default function ClientDetails() {
   const [client, setClient] = useState<Cliente | null>(null)
   const [plano, setPlano] = useState<Plano | null>(null)
   const [etapas, setEtapas] = useState<Etapa[]>([])
+  const [localEtapas, setLocalEtapas] = useState<Etapa[]>([])
   const [cards, setCards] = useState<CardExecucao[]>([])
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const dragItem = useRef<number | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -125,6 +129,58 @@ export default function ClientDetails() {
     fetchData()
   }, [fetchData])
 
+  useEffect(() => {
+    if (dragItem.current === null) {
+      setLocalEtapas([...etapas].sort((a, b) => (a.ordem || 0) - (b.ordem || 0)))
+    }
+  }, [etapas])
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (!canEdit) return
+    dragItem.current = index
+    e.dataTransfer.effectAllowed = 'move'
+    setTimeout(() => setDraggedIndex(index), 0)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (!canEdit || dragItem.current === null) return
+
+    if (dragItem.current !== index) {
+      setLocalEtapas((prev) => {
+        const newList = [...prev]
+        const dragged = newList[dragItem.current!]
+        newList.splice(dragItem.current!, 1)
+        newList.splice(index, 0, dragged)
+        dragItem.current = index
+        setDraggedIndex(index)
+        return newList
+      })
+    }
+  }
+
+  const handleDragEnd = async () => {
+    if (!canEdit) return
+    const currentLocal = [...localEtapas]
+    dragItem.current = null
+    setDraggedIndex(null)
+
+    const promises = currentLocal.map((etapa, index) => {
+      const newOrder = index + 1
+      if (etapa.ordem !== newOrder) {
+        return updateEtapa(etapa.id, { ordem: newOrder })
+      }
+      return Promise.resolve()
+    })
+
+    try {
+      await Promise.all(promises)
+    } catch (err) {
+      toast.error('Erro ao reordenar etapas')
+      fetchData()
+    }
+  }
+
   useRealtime('etapas', () => fetchData())
   useRealtime('planos', () => fetchData())
   useRealtime('clientes', (e) => {
@@ -187,7 +243,7 @@ export default function ClientDetails() {
       <ClientHeader
         client={client}
         plano={plano}
-        etapas={etapas}
+        etapas={localEtapas}
         onUpdate={fetchData}
         onConfetti={() => {
           setShowConfetti(true)
@@ -251,64 +307,81 @@ export default function ClientDetails() {
         </Card>
       </div>
 
-      {etapas.length > 0 && (
+      {localEtapas.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 px-1">
             Mapeamento Estratégico
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...etapas]
-              .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
-              .map((etapa) => (
-                <Card
-                  key={etapa.id}
-                  className="bg-white dark:bg-slate-900 border-l-4 border-l-indigo-500 shadow-sm transition-all hover:shadow-md"
-                >
-                  <CardHeader className="pb-2 flex flex-row items-start justify-between">
-                    <CardTitle className="text-md line-clamp-2 pr-2">{etapa.titulo}</CardTitle>
+            {localEtapas.map((etapa, index) => (
+              <Card
+                key={etapa.id}
+                draggable={canEdit}
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  'bg-white dark:bg-slate-900 border-l-4 border-l-indigo-500 shadow-sm transition-all hover:shadow-md',
+                  canEdit && 'cursor-grab active:cursor-grabbing',
+                  draggedIndex === index &&
+                    'opacity-50 scale-95 border-dashed border-2 bg-indigo-50 dark:bg-indigo-900/20',
+                )}
+              >
+                <CardHeader className="pb-2 flex flex-row items-start justify-between">
+                  <div className="flex items-start gap-2 flex-1">
                     {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 -mt-1 -mr-2 text-slate-400 hover:text-indigo-600 shrink-0"
-                        onClick={() => setEditingEtapa(etapa)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="mt-1 text-slate-300 hover:text-slate-500 shrink-0 cursor-grab active:cursor-grabbing">
+                        <GripVertical className="h-4 w-4" />
+                      </div>
                     )}
-                  </CardHeader>
-                  <CardContent className="space-y-3 text-sm">
-                    <div>
-                      <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                        Objetivo:
-                      </span>
-                      <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
-                        {etapa.objetivo || 'Não definido'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                        Descrição:
-                      </span>
-                      <p className="text-slate-700 dark:text-slate-300 line-clamp-3">
-                        {etapa.descricao || 'Não definida'}
-                      </p>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-0 pb-4 flex justify-end">
+                    <CardTitle className="text-md line-clamp-2 pr-2">{etapa.titulo}</CardTitle>
+                  </div>
+                  {canEdit && (
                     <Button
-                      variant={etapa.status === 'concluido' ? 'outline' : 'default'}
-                      size="sm"
-                      onClick={() => {
-                        setSelectedEtapa(etapa)
-                        setDrawerOpen(true)
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 -mt-1 -mr-2 text-slate-400 hover:text-indigo-600 shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingEtapa(etapa)
                       }}
                     >
-                      {etapa.status === 'concluido' ? 'Ver Execução' : 'Concluir / Log de Execução'}
+                      <Edit className="h-4 w-4" />
                     </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div>
+                    <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                      Objetivo:
+                    </span>
+                    <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
+                      {etapa.objetivo || 'Não definido'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                      Descrição:
+                    </span>
+                    <p className="text-slate-700 dark:text-slate-300 line-clamp-3">
+                      {etapa.descricao || 'Não definida'}
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0 pb-4 flex justify-end">
+                  <Button
+                    variant={etapa.status === 'concluido' ? 'outline' : 'default'}
+                    size="sm"
+                    onClick={() => {
+                      setSelectedEtapa(etapa)
+                      setDrawerOpen(true)
+                    }}
+                  >
+                    {etapa.status === 'concluido' ? 'Ver Execução' : 'Concluir / Log de Execução'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
           </div>
         </div>
       )}
@@ -323,12 +396,12 @@ export default function ClientDetails() {
         />
       )}
 
-      <ProgressMap plano={plano} etapas={etapas} />
+      <ProgressMap plano={plano} etapas={localEtapas} />
 
       <KanbanBoard
         client={client}
         plano={plano}
-        etapas={etapas}
+        etapas={localEtapas}
         cards={cards}
         onUpdate={fetchData}
         onConfetti={() => {

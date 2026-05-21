@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-21T11:46:31.727Z",
+  "generatedAt": "2026-05-21T11:58:26.206Z",
   "collections": [
     {
       "name": "users",
@@ -259,7 +259,7 @@
           "autodateTriggers": ["onCreate", "onUpdate"]
         }
       ],
-      "indexes": []
+      "indexes": ["CREATE INDEX `idx_etapas_ordem` ON `etapas` (ordem)"]
     },
     {
       "name": "cards_execucao",
