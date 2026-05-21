@@ -80,6 +80,7 @@ export function NewClientModal() {
 
       const clientEmail = values.email.trim()
       let clientUser = await getUserByEmail(clientEmail)
+      let createdNewUser = false
       if (!clientUser) {
         clientUser = await createUser({
           email: clientEmail,
@@ -87,22 +88,35 @@ export function NewClientModal() {
           password: 'Skip@Pass123',
           role: 'user',
         })
+        createdNewUser = true
       }
 
       if (clientUser) {
         clientUserId = clientUser.id
       }
 
-      await createCliente({
-        nome: values.nome,
-        objetivo_principal: values.objetivo_principal || '',
-        contexto: values.contexto || '',
-        data_inicio: values.data_inicio.toISOString(),
-        status: 'ativo',
-        progresso: 0,
-        user_id: clientUserId,
-        tldv_meeting_id: finalTldvId || '',
-      })
+      try {
+        await createCliente({
+          nome: values.nome,
+          objetivo_principal: values.objetivo_principal || '',
+          contexto: values.contexto || '',
+          data_inicio: values.data_inicio.toISOString(),
+          status: 'ativo',
+          progresso: 0,
+          user_id: clientUserId,
+          tldv_meeting_id: finalTldvId || '',
+        })
+      } catch (err) {
+        // Rollback user creation to prevent ghost records
+        if (createdNewUser && clientUserId) {
+          try {
+            await pb.collection('users').delete(clientUserId)
+          } catch (e) {
+            // Ignore rollback errors
+          }
+        }
+        throw err
+      }
 
       if (finalTldvId) {
         toast({

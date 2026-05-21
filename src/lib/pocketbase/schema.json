@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-21T14:36:19.532Z",
+  "generatedAt": "2026-05-21T14:54:57.728Z",
   "collections": [
     {
       "name": "users",
@@ -55,11 +55,11 @@
       "name": "clientes",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && user_id = @request.auth.id",
-        "view": "@request.auth.id != '' && user_id = @request.auth.id",
+        "list": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'admin')",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && user_id = @request.auth.id",
-        "delete": "@request.auth.id != '' && user_id = @request.auth.id"
+        "update": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "delete": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
         {
@@ -139,11 +139,11 @@
       "name": "planos",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id",
-        "view": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id",
+        "list": "@request.auth.id != '' && (cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id",
-        "delete": "@request.auth.id != '' && cliente_id.user_id = @request.auth.id"
+        "update": "@request.auth.id != '' && (cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "delete": "@request.auth.id != '' && (cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
         {
@@ -193,11 +193,11 @@
       "name": "etapas",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id",
-        "view": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id",
+        "list": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id",
-        "delete": "@request.auth.id != '' && plano_id.cliente_id.user_id = @request.auth.id"
+        "update": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "delete": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
         {
@@ -265,11 +265,11 @@
       "name": "cards_execucao",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id",
-        "view": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id",
+        "list": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id",
-        "delete": "@request.auth.id != '' && etapa_id.plano_id.cliente_id.user_id = @request.auth.id"
+        "update": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "delete": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
         {
@@ -336,8 +336,8 @@
       "name": "historico_acoes",
       "type": "base",
       "apiRules": {
-        "list": "@request.auth.id != '' && user_id = @request.auth.id",
-        "view": "@request.auth.id != '' && user_id = @request.auth.id",
+        "list": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "view": "@request.auth.id != '' && (user_id = @request.auth.id || @request.auth.role = 'admin')",
         "create": null,
         "update": null,
         "delete": null
