@@ -73,12 +73,14 @@ interface Props {
 }
 
 const formSchema = z.object({
-  o_que_foi_feito: z.string().min(1, 'Campo obrigatório'),
-  passos_seguidos: z.string().min(1, 'Campo obrigatório'),
-  como_foi_executado: z.string().min(1, 'Campo obrigatório'),
-  quando_foi_executado: z.date({ required_error: 'Campo obrigatório' }),
-  responsavel: z.string().min(1, 'Campo obrigatório'),
-  anexos: z.array(z.object({ url: z.string().url('URL inválida').or(z.string().length(0)) })),
+  o_que_foi_feito: z.string().optional(),
+  passos_seguidos: z.string().optional(),
+  como_foi_executado: z.string().optional(),
+  quando_foi_executado: z.date().optional(),
+  responsavel: z.string().optional(),
+  anexos: z
+    .array(z.object({ url: z.string().url('URL inválida').or(z.string().length(0)) }))
+    .optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -86,7 +88,8 @@ type FormValues = z.infer<typeof formSchema>
 export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSaved }: Props) {
   const isMobile = useIsMobile()
   const { user } = useAuth()
-  const canEdit = user?.id === clientUserId
+  const isAdmin = user?.role === 'admin'
+  const canEdit = user?.id === clientUserId || isAdmin
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -94,6 +97,8 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const [saveError, setSaveError] = useState(false)
   const [record, setRecord] = useState<CardExecucao | null>(null)
   const [usersList, setUsersList] = useState<User[]>([])
+
+  const [submitAction, setSubmitAction] = useState<'save' | 'review' | 'approve' | 'adjust'>('save')
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -217,6 +222,10 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const [isDirty, setIsDirty] = useState(false)
   const watched = form.watch()
 
+  const hasEvidence =
+    !!watched.o_que_foi_feito?.trim() ||
+    !!(watched.anexos && watched.anexos.some((a) => a.url?.trim() !== ''))
+
   const defaultValuesStr = useMemo(() => {
     const defAnexos =
       record?.anexos && record.anexos.length > 0
@@ -259,12 +268,14 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     try {
       const payload = {
         etapa_id: etapa.id,
-        o_que_foi_feito: data.o_que_foi_feito,
-        passos_seguidos: data.passos_seguidos,
-        como_foi_executado: data.como_foi_executado,
-        quando_foi_executado: data.quando_foi_executado.toISOString(),
-        responsavel: data.responsavel,
-        anexos: data.anexos.map((a) => a.url).filter((u) => u.trim() !== ''),
+        o_que_foi_feito: data.o_que_foi_feito || '',
+        passos_seguidos: data.passos_seguidos || '',
+        como_foi_executado: data.como_foi_executado || '',
+        quando_foi_executado: data.quando_foi_executado
+          ? data.quando_foi_executado.toISOString()
+          : '',
+        responsavel: data.responsavel || '',
+        anexos: data.anexos ? data.anexos.map((a) => a.url).filter((u) => u.trim() !== '') : [],
       }
 
       let savedRecord: CardExecucao
@@ -289,11 +300,17 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
         }
       }
 
-      if (etapa.status !== 'concluido') {
-        await updateEtapaStatus(etapa.id, 'concluido', etapa)
+      let newStatus = etapa.status
+      if (submitAction === 'review') newStatus = 'aguardando_aprovacao'
+      else if (submitAction === 'approve') newStatus = 'concluido'
+      else if (submitAction === 'adjust') newStatus = 'em_progresso'
+      else if (submitAction === 'save' && etapa.status === 'a_fazer') newStatus = 'em_progresso'
+
+      if (newStatus !== etapa.status) {
+        await updateEtapaStatus(etapa.id, newStatus as any, etapa)
       }
 
-      toast.success('Dados salvos e etapa concluída com sucesso', {
+      toast.success('Dados salvos com sucesso!', {
         icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
       })
       onSaved()
@@ -335,7 +352,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
         <div className="flex-1 overflow-y-auto p-6 pb-24">
           {isEmpty && (
             <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 p-4 rounded-lg mb-6 text-sm border border-amber-200 dark:border-amber-800/50">
-              Nenhum dado preenchido ainda. Complete os campos abaixo.
+              Nenhum dado preenchido ainda. Complete os campos abaixo para iniciar.
             </div>
           )}
 
@@ -559,19 +576,69 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
           </Form>
         </div>
 
-        <div className="border-t p-4 bg-white dark:bg-slate-950 flex justify-end gap-3 shrink-0 absolute bottom-0 left-0 right-0 z-10">
+        <div className="border-t p-4 bg-white dark:bg-slate-950 flex flex-wrap justify-end gap-3 shrink-0 absolute bottom-0 left-0 right-0 z-10">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancelar
           </Button>
-          {canEdit && (
-            <Button type="submit" form="execution-form" disabled={!isDirty || saving}>
-              {saving
-                ? 'Salvando...'
-                : etapa.status === 'concluido'
-                  ? 'Salvar Alterações'
-                  : 'Salvar e Concluir Etapa'}
-            </Button>
+
+          {!isAdmin && etapa.status !== 'concluido' && etapa.status !== 'aguardando_aprovacao' && (
+            <>
+              <Button
+                type="submit"
+                form="execution-form"
+                variant="secondary"
+                onClick={() => setSubmitAction('save')}
+                disabled={saving}
+              >
+                Salvar Rascunho
+              </Button>
+              <Button
+                type="submit"
+                form="execution-form"
+                onClick={() => setSubmitAction('review')}
+                disabled={!hasEvidence || saving}
+              >
+                {saving && submitAction === 'review' ? 'Enviando...' : 'Enviar para Revisão'}
+              </Button>
+            </>
           )}
+
+          {isAdmin && etapa.status === 'aguardando_aprovacao' && (
+            <>
+              <Button
+                type="submit"
+                form="execution-form"
+                variant="outline"
+                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={() => setSubmitAction('adjust')}
+                disabled={saving}
+              >
+                Solicitar Ajustes
+              </Button>
+              <Button
+                type="submit"
+                form="execution-form"
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setSubmitAction('approve')}
+                disabled={saving}
+              >
+                Aprovar Etapa
+              </Button>
+            </>
+          )}
+
+          {(isAdmin && etapa.status !== 'aguardando_aprovacao') ||
+          (!isAdmin &&
+            (etapa.status === 'concluido' || etapa.status === 'aguardando_aprovacao')) ? (
+            <Button
+              type="submit"
+              form="execution-form"
+              onClick={() => setSubmitAction('save')}
+              disabled={!isDirty || saving}
+            >
+              Salvar Alterações
+            </Button>
+          ) : null}
         </div>
 
         <Dialog open={tldvModalOpen} onOpenChange={setTldvModalOpen}>

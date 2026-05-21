@@ -6,7 +6,7 @@ import { getEtapas, Etapa } from '@/services/etapas'
 import { getCardsExecucao, CardExecucao } from '@/services/cards_execucao'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Target, BookOpen, Edit, Map, Loader2, GripVertical } from 'lucide-react'
+import { ArrowLeft, Target, BookOpen, Edit, Map, Loader2, GripVertical, Lock } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { updateEtapa } from '@/services/etapas'
 import { cn } from '@/lib/utils'
@@ -54,7 +54,14 @@ export default function ClientDetails() {
   const [editingPlano, setEditingPlano] = useState<Plano | null>(null)
 
   const { user } = useAuth()
-  const canEdit = user?.role === 'admin' || (client && user?.id === client.user_id)
+  const isAdmin = user?.role === 'admin'
+  const isClient = !isAdmin
+  const canEdit = isAdmin || (client && user?.id === client.user_id)
+
+  const firstUncompletedOrdem =
+    localEtapas
+      .filter((e) => e.status !== 'concluido')
+      .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))[0]?.ordem ?? Infinity
 
   const isDeletedRef = useRef(false)
 
@@ -321,75 +328,109 @@ export default function ClientDetails() {
             Mapeamento Estratégico
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {localEtapas.map((etapa, index) => (
-              <Card
-                key={etapa.id}
-                draggable={canEdit}
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={cn(
-                  'bg-white dark:bg-slate-900 border-l-4 border-l-indigo-500 shadow-sm transition-all hover:shadow-md',
-                  canEdit && 'cursor-grab active:cursor-grabbing',
-                  draggedIndex === index &&
-                    'opacity-50 scale-95 border-dashed border-2 bg-indigo-50 dark:bg-indigo-900/20',
-                )}
-              >
-                <CardHeader className="pb-2 flex flex-row items-start justify-between">
-                  <div className="flex items-start gap-2 flex-1">
-                    {canEdit && (
-                      <div className="mt-1 text-slate-300 hover:text-slate-500 shrink-0 cursor-grab active:cursor-grabbing">
-                        <GripVertical className="h-4 w-4" />
-                      </div>
-                    )}
-                    <CardTitle className="text-md line-clamp-2 pr-2">{etapa.titulo}</CardTitle>
-                  </div>
-                  {canEdit && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 -mt-1 -mr-2 text-slate-400 hover:text-indigo-600 shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEditingEtapa(etapa)
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
+            {localEtapas.map((etapa, index) => {
+              const isLocked = isClient && (etapa.ordem || 0) > firstUncompletedOrdem
+              return (
+                <Card
+                  key={etapa.id}
+                  draggable={canEdit && !isLocked}
+                  onDragStart={(e) => {
+                    if (!isLocked) handleDragStart(e, index)
+                  }}
+                  onDragOver={(e) => {
+                    if (!isLocked) handleDragOver(e, index)
+                  }}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    'bg-white dark:bg-slate-900 border-l-4 border-l-indigo-500 shadow-sm transition-all hover:shadow-md relative',
+                    canEdit && !isLocked && 'cursor-grab active:cursor-grabbing',
+                    draggedIndex === index &&
+                      'opacity-50 scale-95 border-dashed border-2 bg-indigo-50 dark:bg-indigo-900/20',
+                    isLocked && 'opacity-60 grayscale-[30%]',
                   )}
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div>
-                    <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                      Objetivo:
-                    </span>
-                    <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
-                      {etapa.objetivo || 'Não definido'}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
-                      Descrição:
-                    </span>
-                    <p className="text-slate-700 dark:text-slate-300 line-clamp-3">
-                      {etapa.descricao || 'Não definida'}
-                    </p>
-                  </div>
-                </CardContent>
-                <CardFooter className="pt-0 pb-4 flex justify-end">
-                  <Button
-                    variant={etapa.status === 'concluido' ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => {
-                      setSelectedEtapa(etapa)
-                      setDrawerOpen(true)
-                    }}
-                  >
-                    {etapa.status === 'concluido' ? 'Ver Execução' : 'Concluir / Log de Execução'}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                >
+                  {isLocked && (
+                    <div className="absolute inset-0 bg-slate-50/10 backdrop-blur-[1px] z-20 rounded-xl flex flex-col items-center justify-center cursor-not-allowed">
+                      <div className="bg-white/90 dark:bg-slate-800/90 p-4 rounded-full shadow-sm text-slate-500 flex items-center justify-center mb-2">
+                        <Lock className="w-6 h-6" />
+                      </div>
+                      <span className="bg-white/80 dark:bg-slate-800/80 px-3 py-1 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-sm">
+                        Bloqueado
+                      </span>
+                    </div>
+                  )}
+                  <CardHeader className="pb-2 flex flex-row items-start justify-between">
+                    <div className="flex items-start gap-2 flex-1">
+                      {canEdit && (
+                        <div className="mt-1 text-slate-300 hover:text-slate-500 shrink-0 cursor-grab active:cursor-grabbing">
+                          <GripVertical className="h-4 w-4" />
+                        </div>
+                      )}
+                      <CardTitle className="text-md line-clamp-2 pr-2">{etapa.titulo}</CardTitle>
+                    </div>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 -mt-1 -mr-2 text-slate-400 hover:text-indigo-600 shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingEtapa(etapa)
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div>
+                      <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                        Objetivo:
+                      </span>
+                      <p className="text-slate-700 dark:text-slate-300 line-clamp-2">
+                        {etapa.objetivo || 'Não definido'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                        Descrição:
+                      </span>
+                      <p className="text-slate-700 dark:text-slate-300 line-clamp-3">
+                        {etapa.descricao || 'Não definida'}
+                      </p>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="pt-0 pb-4 flex justify-end">
+                    {etapa.status === 'aguardando_aprovacao' ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 relative z-30"
+                        onClick={() => {
+                          setSelectedEtapa(etapa)
+                          setDrawerOpen(true)
+                        }}
+                      >
+                        {isAdmin ? 'Avaliar Execução' : 'Aguardando Aprovação'}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant={etapa.status === 'concluido' ? 'outline' : 'default'}
+                        size="sm"
+                        className="relative z-30"
+                        disabled={isLocked && !isAdmin}
+                        onClick={() => {
+                          setSelectedEtapa(etapa)
+                          setDrawerOpen(true)
+                        }}
+                      >
+                        {etapa.status === 'concluido' ? 'Ver Execução' : 'Executar Tarefa'}
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
+              )
+            })}
           </div>
         </div>
       )}
@@ -541,6 +582,7 @@ export default function ClientDetails() {
                   >
                     <option value="a_fazer">A Fazer</option>
                     <option value="em_progresso">Em Progresso</option>
+                    <option value="aguardando_aprovacao">Aguardando Aprovação</option>
                     <option value="concluido">Concluído</option>
                   </select>
                 </div>

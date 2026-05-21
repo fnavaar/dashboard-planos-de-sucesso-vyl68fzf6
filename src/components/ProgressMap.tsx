@@ -158,9 +158,18 @@ export function ProgressMap({ plano, etapas, readOnly }: Props) {
         <div className="flex-1 flex flex-col md:flex-row items-center justify-center w-full py-4 overflow-x-auto hide-scrollbar px-2 min-h-[140px]">
           {sortedEtapas.map((etapa, index) => {
             const isCompleted = etapa.status === 'concluido'
+            const isAguardando = etapa.status === 'aguardando_aprovacao'
             const isInProgress = etapa.status === 'em_progresso'
             const isNotStarted = etapa.status === 'a_fazer'
-            const fillPercentage = isCompleted ? '100%' : isInProgress ? '50%' : '0%'
+
+            // Step is locked if there's an earlier step not completed.
+            const isLocked = nextStep && (etapa.ordem || 0) > (nextStep.ordem || 0)
+
+            const fillPercentage = isCompleted
+              ? '100%'
+              : isInProgress || isAguardando
+                ? '50%'
+                : '0%'
 
             return (
               <div
@@ -171,16 +180,24 @@ export function ProgressMap({ plano, etapas, readOnly }: Props) {
                   <button
                     onClick={() => handleStepClick(etapa.id)}
                     className={cn(
-                      'w-10 h-10 rounded-full flex items-center justify-center shadow-sm z-10 transition-all duration-200 hover:scale-110 shrink-0',
+                      'w-10 h-10 rounded-full flex items-center justify-center shadow-sm z-10 transition-all duration-200 shrink-0',
+                      !isLocked && 'hover:scale-110 cursor-pointer',
+                      isLocked && 'cursor-not-allowed opacity-50',
                       isCompleted && 'bg-green-500 text-white',
+                      isAguardando && 'bg-amber-500 text-white animate-pulse',
                       isInProgress && 'bg-blue-500 text-white animate-pulse',
                       isNotStarted &&
+                        !isAguardando &&
+                        !isInProgress &&
+                        !isCompleted &&
                         'bg-white border-2 border-gray-300 text-gray-400 dark:bg-slate-800 dark:border-gray-600 dark:text-gray-500',
                     )}
                     title={etapa.titulo}
                   >
                     {isCompleted ? (
                       <Check className="w-5 h-5 stroke-[3]" />
+                    ) : isAguardando ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
                     ) : isInProgress ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
@@ -193,9 +210,11 @@ export function ProgressMap({ plano, etapas, readOnly }: Props) {
                       'absolute top-12 text-[10px] font-bold text-center w-24 truncate hidden md:block',
                       isCompleted
                         ? 'text-green-600 dark:text-green-400'
-                        : isInProgress
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-gray-400',
+                        : isAguardando
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : isInProgress
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-400',
                     )}
                   >
                     {etapa.titulo}
@@ -205,9 +224,11 @@ export function ProgressMap({ plano, etapas, readOnly }: Props) {
                       'md:hidden text-[10px] font-bold text-center mt-1 mb-1',
                       isCompleted
                         ? 'text-green-600 dark:text-green-400'
-                        : isInProgress
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-gray-400',
+                        : isAguardando
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : isInProgress
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-gray-400',
                     )}
                   >
                     {etapa.titulo}
@@ -253,7 +274,9 @@ export function ProgressMap({ plano, etapas, readOnly }: Props) {
                   ? 'Ver Etapa'
                   : nextStep.status === 'em_progresso'
                     ? 'Continuar'
-                    : 'Começar'}
+                    : nextStep.status === 'aguardando_aprovacao'
+                      ? 'Aguardando Avaliação'
+                      : 'Começar'}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Card>

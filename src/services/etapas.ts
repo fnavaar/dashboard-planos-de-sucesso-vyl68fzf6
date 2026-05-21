@@ -8,7 +8,7 @@ export interface Etapa {
   objetivo: string
   tempo_estimado: string
   ordem: number
-  status: 'a_fazer' | 'em_progresso' | 'concluido'
+  status: 'a_fazer' | 'em_progresso' | 'aguardando_aprovacao' | 'concluido'
   created: string
   updated: string
 }
@@ -18,7 +18,7 @@ export const getEtapas = (planoId: string) =>
 
 export const updateEtapaStatus = (
   id: string,
-  status: 'a_fazer' | 'em_progresso' | 'concluido',
+  status: 'a_fazer' | 'em_progresso' | 'aguardando_aprovacao' | 'concluido',
   fullEtapa?: Etapa,
 ) => {
   const payload: any = { status }
