@@ -16,9 +16,10 @@ interface HistoricoAcao {
 interface Props {
   plano: Plano | null
   etapas: Etapa[]
+  readOnly?: boolean
 }
 
-export function ProgressMap({ plano, etapas }: Props) {
+export function ProgressMap({ plano, etapas, readOnly }: Props) {
   const [historico, setHistorico] = useState<HistoricoAcao[]>([])
 
   const fetchHistorico = async () => {
@@ -96,12 +97,15 @@ export function ProgressMap({ plano, etapas }: Props) {
           Mapa de Progresso
         </h3>
         <p className="text-slate-500 dark:text-slate-400 mb-4">
-          Nenhum plano ativo encontrado. Gere um plano no cabeçalho para visualizar e acompanhar o
-          progresso.
+          {readOnly
+            ? 'Seu plano ainda não foi criado. Aguarde contato da Adapta.'
+            : 'Nenhum plano ativo encontrado. Gere um plano no cabeçalho para visualizar e acompanhar o progresso.'}
         </p>
-        <Button variant="outline" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-          Ir para o Cabeçalho
-        </Button>
+        {!readOnly && (
+          <Button variant="outline" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            Ir para o Cabeçalho
+          </Button>
+        )}
       </Card>
     )
   }
@@ -245,7 +249,11 @@ export function ProgressMap({ plano, etapas }: Props) {
                 onClick={() => handleStepClick(nextStep.id)}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200"
               >
-                {nextStep.status === 'em_progresso' ? 'Continuar' : 'Começar'}
+                {readOnly
+                  ? 'Ver Etapa'
+                  : nextStep.status === 'em_progresso'
+                    ? 'Continuar'
+                    : 'Começar'}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Card>

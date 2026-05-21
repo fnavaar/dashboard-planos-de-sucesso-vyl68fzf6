@@ -45,9 +45,18 @@ interface Props {
   cards: CardExecucao[]
   onUpdate: () => void
   onConfetti: () => void
+  readOnly?: boolean
 }
 
-export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti }: Props) {
+export function KanbanBoard({
+  client,
+  plano,
+  etapas,
+  cards,
+  onUpdate,
+  onConfetti,
+  readOnly,
+}: Props) {
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
   const [editingCard, setEditingCard] = useState<CardExecucao | null>(null)
   const [addingToEtapa, setAddingToEtapa] = useState<string | null>(null)
@@ -109,24 +118,29 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
     return (
       <Card className="p-12 flex flex-col items-center justify-center text-center bg-indigo-50/50 dark:bg-indigo-950/20 border-dashed border-2 border-indigo-200 dark:border-indigo-900 transition-all duration-200">
         <Sparkles className="w-12 h-12 text-indigo-500 mb-4" />
-        <h3 className="text-xl font-bold mb-2">Nenhum plano criado ainda</h3>
+        <h3 className="text-xl font-bold mb-2">
+          {readOnly ? 'Plano não encontrado' : 'Nenhum plano criado ainda'}
+        </h3>
         <p className="text-slate-500 mb-6 max-w-md">
-          Utilize nossa IA para gerar um plano de sucesso gamificado e personalizado baseado nos
-          objetivos do cliente.
+          {readOnly
+            ? 'Seu plano ainda não foi criado. Aguarde contato da Adapta.'
+            : 'Utilize nossa IA para gerar um plano de sucesso gamificado e personalizado baseado nos objetivos do cliente.'}
         </p>
-        <GeneratePlanDialog
-          client={client}
-          onSuccess={() => {
-            onUpdate()
-            onConfetti()
-          }}
-          trigger={
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:font-bold">
-              Gerar Plano com IA
-              <Sparkles className="w-5 h-5 ml-2" />
-            </Button>
-          }
-        />
+        {!readOnly && (
+          <GeneratePlanDialog
+            client={client}
+            onSuccess={() => {
+              onUpdate()
+              onConfetti()
+            }}
+            trigger={
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-6 shadow-elevation transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:font-bold">
+                Gerar Plano com IA
+                <Sparkles className="w-5 h-5 ml-2" />
+              </Button>
+            }
+          />
+        )}
       </Card>
     )
   }
@@ -184,12 +198,16 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                       ? 'border-solid border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-900/10'
                       : 'border-solid border-slate-200 bg-slate-100/60 dark:border-slate-700 dark:bg-slate-800/50',
                 )}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  setDragOverCol(etapa.id)
-                }}
-                onDragLeave={() => setDragOverCol(null)}
-                onDrop={(e) => handleDrop(e, etapa.id)}
+                onDragOver={
+                  readOnly
+                    ? undefined
+                    : (e) => {
+                        e.preventDefault()
+                        setDragOverCol(etapa.id)
+                      }
+                }
+                onDragLeave={readOnly ? undefined : () => setDragOverCol(null)}
+                onDrop={readOnly ? undefined : (e) => handleDrop(e, etapa.id)}
               >
                 <div className="flex flex-col gap-1 mb-2 px-1">
                   <div className="flex items-center justify-between">
@@ -218,10 +236,11 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                       onDragStart={handleDragStart}
                       onEdit={() => setEditingCard(card)}
                       onToggle={(completed) => handleToggleCard(card, completed)}
+                      readOnly={readOnly}
                     />
                   ))}
 
-                  {!isEtapaConcluida && (
+                  {!isEtapaConcluida && !readOnly && (
                     <Button
                       variant="ghost"
                       onClick={() => setAddingToEtapa(etapa.id)}
@@ -232,7 +251,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
                   )}
                 </div>
 
-                {!isEtapaConcluida && isAllCompleted && (
+                {!isEtapaConcluida && isAllCompleted && !readOnly && (
                   <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 animate-fade-in-up shrink-0">
                     <Button
                       onClick={() => handleCompleteEtapa(etapa.id)}
@@ -262,6 +281,7 @@ export function KanbanBoard({ client, plano, etapas, cards, onUpdate, onConfetti
           setAddingToEtapa(null)
           onUpdate()
         }}
+        readOnly={readOnly}
       />
     </div>
   )
@@ -272,20 +292,23 @@ function TaskCard({
   onDragStart,
   onEdit,
   onToggle,
+  readOnly,
 }: {
   card: CardExecucao
   onDragStart: (e: React.DragEvent, id: string) => void
   onEdit: () => void
   onToggle: (completed: boolean) => void
+  readOnly?: boolean
 }) {
   const isCompleted = !!card.quando_foi_executado
 
   return (
     <Card
-      draggable
-      onDragStart={(e) => onDragStart(e, card.id)}
+      draggable={!readOnly}
+      onDragStart={readOnly ? undefined : (e) => onDragStart(e, card.id)}
       className={cn(
-        'p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-all duration-200 relative overflow-hidden group shrink-0',
+        'p-3 hover:shadow-md transition-all duration-200 relative overflow-hidden group shrink-0',
+        readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
         isCompleted
           ? 'bg-slate-50 border-slate-200/50 opacity-75 dark:bg-slate-900/50 dark:border-slate-800'
           : 'bg-white border-slate-200 dark:bg-slate-950 dark:border-slate-700',
@@ -296,6 +319,7 @@ function TaskCard({
           <Checkbox
             checked={isCompleted}
             onCheckedChange={(c) => onToggle(c as boolean)}
+            disabled={readOnly}
             className={cn(
               isCompleted &&
                 'data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500',
@@ -343,12 +367,14 @@ function TaskDialog({
   open,
   onClose,
   onSave,
+  readOnly,
 }: {
   card: CardExecucao | null
   etapaId: string | null
   open: boolean
   onClose: () => void
   onSave: () => void
+  readOnly?: boolean
 }) {
   const [loading, setLoading] = useState(false)
   const isEditing = !!card
@@ -361,6 +387,7 @@ function TaskDialog({
     const data = {
       o_que_foi_feito: formData.get('o_que_foi_feito') as string,
       passos_seguidos: formData.get('passos_seguidos') as string,
+      como_foi_executado: formData.get('como_foi_executado') as string,
       responsavel: formData.get('responsavel') as string,
     }
 
@@ -400,18 +427,24 @@ function TaskDialog({
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>{isEditing ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
+            <DialogTitle>
+              {readOnly ? 'Detalhes da Tarefa' : isEditing ? 'Editar Tarefa' : 'Nova Tarefa'}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="o_que_foi_feito">Título da Tarefa</Label>
+              <Label htmlFor="o_que_foi_feito">O que foi feito?</Label>
               <Input
                 id="o_que_foi_feito"
                 name="o_que_foi_feito"
                 defaultValue={card?.o_que_foi_feito || ''}
                 placeholder="Ex: Enviar e-mail de boas vindas"
                 required
-                autoFocus
+                autoFocus={!readOnly}
+                readOnly={readOnly}
+                className={
+                  readOnly ? 'bg-slate-50 dark:bg-slate-900 border-none pointer-events-none' : ''
+                }
               />
             </div>
             <div className="space-y-2">
@@ -421,38 +454,85 @@ function TaskDialog({
                 name="responsavel"
                 defaultValue={card?.responsavel || ''}
                 placeholder="Ex: João Silva"
+                readOnly={readOnly}
+                className={
+                  readOnly ? 'bg-slate-50 dark:bg-slate-900 border-none pointer-events-none' : ''
+                }
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="passos_seguidos">Detalhes / Passos</Label>
+              <Label htmlFor="como_foi_executado">Como foi executado?</Label>
+              <Textarea
+                id="como_foi_executado"
+                name="como_foi_executado"
+                defaultValue={card?.como_foi_executado || ''}
+                rows={3}
+                placeholder="Detalhes sobre a execução..."
+                readOnly={readOnly}
+                className={
+                  readOnly
+                    ? 'bg-slate-50 dark:bg-slate-900 border-none pointer-events-none resize-none'
+                    : ''
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="passos_seguidos">Passos Seguidos</Label>
               <Textarea
                 id="passos_seguidos"
                 name="passos_seguidos"
                 defaultValue={card?.passos_seguidos || ''}
                 rows={4}
                 placeholder="Descreva o que precisa ser feito..."
+                readOnly={readOnly}
+                className={
+                  readOnly
+                    ? 'bg-slate-50 dark:bg-slate-900 border-none pointer-events-none resize-none'
+                    : ''
+                }
               />
             </div>
-          </div>
-          <DialogFooter className="flex items-center justify-between sm:justify-between">
-            {isEditing ? (
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-                disabled={loading}
-              >
-                <Trash2 className="w-4 h-4 mr-2" /> Excluir
-              </Button>
-            ) : (
-              <div />
+            {readOnly && card?.quando_foi_executado && (
+              <div className="space-y-2">
+                <Label>Data de Execução</Label>
+                <div className="text-sm bg-slate-50 dark:bg-slate-900 p-2 rounded-md">
+                  {new Date(card.quando_foi_executado).toLocaleDateString('pt-BR')}
+                </div>
+              </div>
             )}
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isEditing ? 'Salvar Alterações' : 'Criar Tarefa'}
-            </Button>
-          </DialogFooter>
+          </div>
+          {!readOnly && (
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              {isEditing ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDelete}
+                  disabled={loading}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                </Button>
+              ) : (
+                <div />
+              )}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {isEditing ? 'Salvar Alterações' : 'Criar Tarefa'}
+              </Button>
+            </DialogFooter>
+          )}
+          {readOnly && (
+            <DialogFooter>
+              <Button type="button" onClick={onClose} variant="outline" className="w-full">
+                Fechar
+              </Button>
+            </DialogFooter>
+          )}
         </form>
       </DialogContent>
     </Dialog>

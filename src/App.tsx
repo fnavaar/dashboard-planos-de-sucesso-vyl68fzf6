@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 
 import Index from './pages/Index'
 import ClientDetails from './pages/ClientDetails'
+import Portal from './pages/Portal'
 import Login from './pages/Login'
 import Users from './pages/Users'
 import NotFound from './pages/NotFound'
@@ -41,6 +42,16 @@ const App = () => (
                 <Route path="/cliente/:id" element={<ClientDetails />} />
                 <Route path="/usuarios" element={<Users />} />
               </Route>
+              <Route
+                path="/portal/:id"
+                element={
+                  <ProtectedRoute>
+                    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+                      <Portal />
+                    </div>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </NewClientProvider>
