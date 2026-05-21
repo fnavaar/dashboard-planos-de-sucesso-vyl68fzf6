@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -111,6 +111,9 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const [usersList, setUsersList] = useState<User[]>([])
 
   const [submitAction, setSubmitAction] = useState<'save' | 'review' | 'approve' | 'adjust'>('save')
+  const submitActionRef = useRef<'save' | 'review' | 'approve' | 'adjust'>('save')
+  const [isRequestingAdjustments, setIsRequestingAdjustments] = useState(false)
+  const [feedbackAdmin, setFeedbackAdmin] = useState('')
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -316,8 +319,10 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
     if (!canEdit) return
 
     let feedback = ''
-    if (submitAction === 'adjust') {
-      feedback = window.prompt('Motivo / Ajustes necessários:') || ''
+    const action = submitActionRef.current
+
+    if (action === 'adjust') {
+      feedback = feedbackAdmin
       if (!feedback.trim()) {
         toast.error('É necessário informar o motivo para solicitar ajustes.')
         return
@@ -368,9 +373,9 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
       }
 
       let newStatus = etapa.status
-      if (submitAction === 'review') newStatus = 'aguardando_aprovacao'
-      else if (submitAction === 'approve') newStatus = 'concluido'
-      else if (submitAction === 'adjust') newStatus = 'em_progresso'
+      if (action === 'review') newStatus = 'aguardando_aprovacao'
+      else if (action === 'approve') newStatus = 'concluido'
+      else if (action === 'adjust') newStatus = 'em_progresso'
       else if (submitAction === 'save' && etapa.status === 'a_fazer') newStatus = 'em_progresso'
 
       if (newStatus !== etapa.status) {
@@ -732,71 +737,118 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
         </div>
 
         <div className="border-t p-4 bg-white dark:bg-slate-950 flex flex-wrap justify-end gap-3 shrink-0 absolute bottom-0 left-0 right-0 z-10">
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancelar
-          </Button>
-
-          {!isAdmin && etapa.status !== 'concluido' && etapa.status !== 'aguardando_aprovacao' && (
+          {isRequestingAdjustments ? (
+            <div className="w-full space-y-3">
+              <Label>Motivo / Ajustes Necessários</Label>
+              <Textarea
+                value={feedbackAdmin}
+                onChange={(e) => setFeedbackAdmin(e.target.value)}
+                placeholder="Descreva o que o cliente precisa ajustar..."
+                className="resize-none min-h-[80px]"
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setIsRequestingAdjustments(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSubmitAction('adjust')
+                    submitActionRef.current = 'adjust'
+                    setTimeout(() => {
+                      const formElement = document.getElementById(
+                        'execution-form',
+                      ) as HTMLFormElement
+                      formElement?.requestSubmit()
+                    }, 0)
+                  }}
+                  disabled={saving || !feedbackAdmin.trim()}
+                >
+                  {saving ? 'Enviando...' : 'Enviar Solicitação'}
+                </Button>
+              </div>
+            </div>
+          ) : (
             <>
-              <Button
-                type="submit"
-                form="execution-form"
-                variant="secondary"
-                onClick={() => setSubmitAction('save')}
-                disabled={saving}
-              >
-                Salvar Rascunho
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
+                Cancelar
               </Button>
-              <Button
-                type="submit"
-                form="execution-form"
-                onClick={() => setSubmitAction('review')}
-                disabled={!hasEvidence || saving}
-                title={
-                  !hasEvidence
-                    ? 'Preencha todos os campos e adicione ao menos uma evidência (arquivo ou link)'
-                    : ''
-                }
-              >
-                {saving && submitAction === 'review' ? 'Enviando...' : 'Enviar para Revisão'}
-              </Button>
+
+              {!isAdmin &&
+                etapa.status !== 'concluido' &&
+                etapa.status !== 'aguardando_aprovacao' && (
+                  <>
+                    <Button
+                      type="submit"
+                      form="execution-form"
+                      variant="secondary"
+                      onClick={() => {
+                        setSubmitAction('save')
+                        submitActionRef.current = 'save'
+                      }}
+                      disabled={saving}
+                    >
+                      Salvar Rascunho
+                    </Button>
+                    <Button
+                      type="submit"
+                      form="execution-form"
+                      onClick={() => {
+                        setSubmitAction('review')
+                        submitActionRef.current = 'review'
+                      }}
+                      disabled={!hasEvidence || saving}
+                      title={
+                        !hasEvidence
+                          ? 'Preencha todos os campos e adicione ao menos uma evidência (arquivo ou link)'
+                          : ''
+                      }
+                    >
+                      {saving && submitAction === 'review' ? 'Enviando...' : 'Enviar para Revisão'}
+                    </Button>
+                  </>
+                )}
+
+              {isAdmin && etapa.status === 'aguardando_aprovacao' && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => setIsRequestingAdjustments(true)}
+                    disabled={saving}
+                  >
+                    Solicitar Ajustes
+                  </Button>
+                  <Button
+                    type="submit"
+                    form="execution-form"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => {
+                      setSubmitAction('approve')
+                      submitActionRef.current = 'approve'
+                    }}
+                    disabled={saving}
+                  >
+                    Aprovar Etapa
+                  </Button>
+                </>
+              )}
+
+              {isAdmin && etapa.status !== 'aguardando_aprovacao' ? (
+                <Button
+                  type="submit"
+                  form="execution-form"
+                  onClick={() => {
+                    setSubmitAction('save')
+                    submitActionRef.current = 'save'
+                  }}
+                  disabled={!isDirty || saving}
+                >
+                  Salvar Alterações
+                </Button>
+              ) : null}
             </>
           )}
-
-          {isAdmin && etapa.status === 'aguardando_aprovacao' && (
-            <>
-              <Button
-                type="submit"
-                form="execution-form"
-                variant="outline"
-                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                onClick={() => setSubmitAction('adjust')}
-                disabled={saving}
-              >
-                Solicitar Ajustes
-              </Button>
-              <Button
-                type="submit"
-                form="execution-form"
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={() => setSubmitAction('approve')}
-                disabled={saving}
-              >
-                Aprovar Etapa
-              </Button>
-            </>
-          )}
-
-          {isAdmin && etapa.status !== 'aguardando_aprovacao' ? (
-            <Button
-              type="submit"
-              form="execution-form"
-              onClick={() => setSubmitAction('save')}
-              disabled={!isDirty || saving}
-            >
-              Salvar Alterações
-            </Button>
-          ) : null}
         </div>
 
         <Dialog open={tldvModalOpen} onOpenChange={setTldvModalOpen}>

@@ -50,7 +50,18 @@ routerAdd(
     } catch (err) {}
 
     const titulo = etapa.getString('titulo')
-    const url = `https://dashboard-planos-de-sucesso-5bf75.goskip.app/cliente/${cliente.id}`
+    let email = cliente.id
+    try {
+      const userId = cliente.getString('user_id')
+      if (userId) {
+        const user = $app.findRecordById('users', userId)
+        if (user && user.getString('email')) {
+          email = user.getString('email')
+        }
+      }
+    } catch (err) {}
+
+    const url = `https://mapass.goskip.app/cliente/${email}`
     let text = ''
 
     if (acao === 'concluida') {
