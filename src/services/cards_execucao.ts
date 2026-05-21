@@ -10,6 +10,7 @@ export interface CardExecucao {
   responsavel?: string
   anexos?: string[]
   arquivos_evidencia?: string[]
+  feedback_admin?: string
 }
 
 export async function getCardExecucaoByEtapa(etapaId: string): Promise<CardExecucao | null> {

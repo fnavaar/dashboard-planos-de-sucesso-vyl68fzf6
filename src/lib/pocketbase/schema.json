@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-21T15:28:58.362Z",
+  "generatedAt": "2026-05-21T15:36:27.394Z",
   "collections": [
     {
       "name": "users",
@@ -195,9 +195,9 @@
       "apiRules": {
         "list": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
-        "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
-        "delete": "@request.auth.id != '' && (plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')"
+        "create": "@request.auth.role = 'admin'",
+        "update": "@request.auth.role = 'admin' || (plano_id.cliente_id.user_id = @request.auth.id && @request.body.status != 'concluido')",
+        "delete": "@request.auth.role = 'admin'"
       },
       "fields": [
         {
@@ -268,7 +268,7 @@
         "list": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
         "view": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
         "create": "@request.auth.id != ''",
-        "update": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')",
+        "update": "@request.auth.role = 'admin' || (etapa_id.plano_id.cliente_id.user_id = @request.auth.id && etapa_id.status != 'concluido')",
         "delete": "@request.auth.id != '' && (etapa_id.plano_id.cliente_id.user_id = @request.auth.id || @request.auth.role = 'admin')"
       },
       "fields": [
@@ -332,6 +332,12 @@
         {
           "name": "arquivos_evidencia",
           "type": "file",
+          "required": false,
+          "system": false
+        },
+        {
+          "name": "feedback_admin",
+          "type": "text",
           "required": false,
           "system": false
         }

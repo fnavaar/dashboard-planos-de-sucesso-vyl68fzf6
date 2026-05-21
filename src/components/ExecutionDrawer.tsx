@@ -99,6 +99,9 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const canEdit = user?.id === clientUserId || isAdmin
+  const isLockedForClient =
+    !isAdmin && (etapa.status === 'aguardando_aprovacao' || etapa.status === 'concluido')
+  const isFieldDisabled = !canEdit || isLockedForClient
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -208,10 +211,12 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             ? card.anexos.map((url) => ({ url }))
             : [{ url: '' }]
 
+        const isClientForcingEmpty = !isAdmin && etapa.status === 'a_fazer' && card.o_que_foi_feito
+
         form.reset({
-          o_que_foi_feito: card.o_que_foi_feito || '',
-          passos_seguidos: card.passos_seguidos || '',
-          como_foi_executado: card.como_foi_executado || '',
+          o_que_foi_feito: isClientForcingEmpty ? '' : card.o_que_foi_feito || '',
+          passos_seguidos: isClientForcingEmpty ? '' : card.passos_seguidos || '',
+          como_foi_executado: isClientForcingEmpty ? '' : card.como_foi_executado || '',
           quando_foi_executado: card.quando_foi_executado
             ? new Date(card.quando_foi_executado)
             : undefined,
@@ -236,11 +241,17 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
   const [isDirty, setIsDirty] = useState(false)
   const watched = form.watch()
 
-  const hasEvidence =
-    !!watched.o_que_foi_feito?.trim() ||
+  const hasFilesOrLinks =
     !!(watched.anexos && watched.anexos.some((a) => a.url?.trim() !== '')) ||
     newFiles.length > 0 ||
     (record?.arquivos_evidencia && record.arquivos_evidencia.length - deletedFiles.length > 0)
+
+  const hasInsights =
+    !!watched.o_que_foi_feito?.trim() &&
+    !!watched.passos_seguidos?.trim() &&
+    !!watched.como_foi_executado?.trim()
+
+  const hasEvidence = hasFilesOrLinks && hasInsights
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -303,10 +314,21 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
 
   const onSubmit = async (data: FormValues) => {
     if (!canEdit) return
+
+    let feedback = ''
+    if (submitAction === 'adjust') {
+      feedback = window.prompt('Motivo / Ajustes necessários:') || ''
+      if (!feedback.trim()) {
+        toast.error('É necessário informar o motivo para solicitar ajustes.')
+        return
+      }
+    }
+
     setSaving(true)
     setSaveError(false)
     try {
       const payload = new FormData()
+      if (feedback) payload.append('feedback_admin', feedback)
       payload.append('etapa_id', etapa.id)
       if (data.o_que_foi_feito) payload.append('o_que_foi_feito', data.o_que_foi_feito)
       if (data.passos_seguidos) payload.append('passos_seguidos', data.passos_seguidos)
@@ -415,6 +437,15 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             </div>
           )}
 
+          {record?.feedback_admin && etapa.status === 'em_progresso' && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 p-4 rounded-lg mb-6 text-sm border border-amber-200 dark:border-amber-800/50">
+              <strong className="block mb-1 text-amber-900 dark:text-amber-300">
+                Feedback do Administrador:
+              </strong>
+              <p>{record.feedback_admin}</p>
+            </div>
+          )}
+
           <div className="mb-6">
             <p className="text-sm font-semibold mb-1 text-slate-500">Objetivo da etapa</p>
             <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-md text-sm text-slate-700 dark:text-slate-300">
@@ -438,7 +469,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                           </span>
                         )}
                       </FormLabel>
-                      {canEdit && (
+                      {!isFieldDisabled && (
                         <Button
                           type="button"
                           variant="outline"
@@ -455,7 +486,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                       <Textarea
                         placeholder="Descreva o que foi realizado..."
                         className="resize-none min-h-[100px]"
-                        disabled={!canEdit}
+                        disabled={isFieldDisabled}
                         {...field}
                       />
                     </FormControl>
@@ -474,7 +505,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                       <Textarea
                         placeholder="1. Primeiro passo...&#10;2. Segundo passo..."
                         className="resize-none min-h-[100px]"
-                        disabled={!canEdit}
+                        disabled={isFieldDisabled}
                         {...field}
                       />
                     </FormControl>
@@ -493,7 +524,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                       <Textarea
                         placeholder="Detalhes da execução, ferramentas utilizadas..."
                         className="resize-none min-h-[100px]"
-                        disabled={!canEdit}
+                        disabled={isFieldDisabled}
                         {...field}
                       />
                     </FormControl>
@@ -514,7 +545,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                           <FormControl>
                             <Button
                               variant={'outline'}
-                              disabled={!canEdit}
+                              disabled={isFieldDisabled}
                               className={cn(
                                 'w-full pl-3 text-left font-normal',
                                 !field.value && 'text-muted-foreground',
@@ -550,7 +581,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                     <FormItem>
                       <FormLabel>Responsável</FormLabel>
                       <Select
-                        disabled={!canEdit}
+                        disabled={isFieldDisabled}
                         onValueChange={field.onChange}
                         value={field.value}
                       >
@@ -587,9 +618,13 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                       <FormItem>
                         <div className="flex gap-2">
                           <FormControl>
-                            <Input placeholder="https://..." {...inputField} disabled={!canEdit} />
+                            <Input
+                              placeholder="https://..."
+                              {...inputField}
+                              disabled={isFieldDisabled}
+                            />
                           </FormControl>
-                          {canEdit && (
+                          {!isFieldDisabled && (
                             <Button
                               type="button"
                               variant="outline"
@@ -605,7 +640,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                     )}
                   />
                 ))}
-                {canEdit && (
+                {!isFieldDisabled && (
                   <Button
                     type="button"
                     variant="outline"
@@ -635,7 +670,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                           >
                             {f}
                           </a>
-                          {canEdit && (
+                          {!isFieldDisabled && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -669,7 +704,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                     </div>
                   ))}
 
-                  {canEdit && (
+                  {!isFieldDisabled && (
                     <div className="mt-4">
                       <Label
                         htmlFor="file-upload"
@@ -717,6 +752,11 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                 form="execution-form"
                 onClick={() => setSubmitAction('review')}
                 disabled={!hasEvidence || saving}
+                title={
+                  !hasEvidence
+                    ? 'Preencha todos os campos e adicione ao menos uma evidência (arquivo ou link)'
+                    : ''
+                }
               >
                 {saving && submitAction === 'review' ? 'Enviando...' : 'Enviar para Revisão'}
               </Button>
@@ -747,9 +787,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
             </>
           )}
 
-          {(isAdmin && etapa.status !== 'aguardando_aprovacao') ||
-          (!isAdmin &&
-            (etapa.status === 'concluido' || etapa.status === 'aguardando_aprovacao')) ? (
+          {isAdmin && etapa.status !== 'aguardando_aprovacao' ? (
             <Button
               type="submit"
               form="execution-form"

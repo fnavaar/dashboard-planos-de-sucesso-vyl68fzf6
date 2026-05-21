@@ -68,7 +68,7 @@ export default function ClientDetails() {
 
   const visibleEtapas = isAdmin
     ? localEtapas
-    : localEtapas.filter((e) => (e.ordem || 0) <= firstUncompletedOrdem)
+    : localEtapas.filter((e) => e.status === 'concluido' || e.ordem === firstUncompletedOrdem)
 
   const isDeletedRef = useRef(false)
 
@@ -510,7 +510,7 @@ export default function ClientDetails() {
         />
       )}
 
-      <ProgressMap plano={plano} etapas={visibleEtapas} />
+      <ProgressMap plano={plano} etapas={visibleEtapas} readOnly={!isAdmin} />
 
       <KanbanBoard
         client={client}
@@ -522,6 +522,7 @@ export default function ClientDetails() {
           setShowConfetti(true)
           setTimeout(() => setShowConfetti(false), 3000)
         }}
+        readOnly={!isAdmin}
       />
 
       <Dialog open={!!editingPlano} onOpenChange={(open) => !open && setEditingPlano(null)}>
