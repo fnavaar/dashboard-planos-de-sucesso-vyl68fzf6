@@ -21,3 +21,11 @@ export async function createUser(data: any) {
     verified: true,
   })
 }
+
+export async function getUserByEmail(email: string) {
+  try {
+    return await pb.collection('users').getFirstListItem<User>(`email="${email}"`)
+  } catch {
+    return null
+  }
+}

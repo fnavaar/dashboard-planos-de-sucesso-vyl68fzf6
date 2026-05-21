@@ -39,11 +39,11 @@ const App = () => (
                 }
               >
                 <Route path="/" element={<Index />} />
-                <Route path="/cliente/:id" element={<ClientDetails />} />
+                <Route path="/cliente/:email" element={<ClientDetails />} />
                 <Route path="/usuarios" element={<Users />} />
               </Route>
               <Route
-                path="/portal/:id"
+                path="/portal/:email"
                 element={
                   <ProtectedRoute>
                     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">

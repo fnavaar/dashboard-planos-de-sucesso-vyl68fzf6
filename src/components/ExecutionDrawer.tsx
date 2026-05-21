@@ -498,11 +498,14 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {usersList.map((u) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.name || u.email}
-                            </SelectItem>
-                          ))}
+                          {usersList.map((u) => {
+                            const identifier = u.name || u.email
+                            return (
+                              <SelectItem key={u.id} value={identifier}>
+                                {identifier}
+                              </SelectItem>
+                            )
+                          })}
                         </SelectContent>
                       </Select>
                       <FormMessage />

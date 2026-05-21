@@ -25,11 +25,13 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { createCliente } from '@/services/clients'
 import { useAuth } from '@/hooks/use-auth'
 import { useToast } from '@/hooks/use-toast'
+import { getUserByEmail, createUser } from '@/services/users'
 import pb from '@/lib/pocketbase/client'
 import { Loader2 } from 'lucide-react'
 
 const formSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
+  email: z.string().email('Email inválido'),
   objetivo_principal: z.string().optional(),
   contexto: z.string().optional(),
   data_inicio: z.date({
@@ -49,6 +51,7 @@ export function NewClientModal() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       nome: '',
+      email: '',
       objetivo_principal: '',
       contexto: '',
       tldv_meeting_id: '',
@@ -73,6 +76,23 @@ export function NewClientModal() {
         finalTldvId = match ? match[1] : finalTldvId
       }
 
+      let clientUserId = user?.id
+
+      const clientEmail = values.email.trim()
+      let clientUser = await getUserByEmail(clientEmail)
+      if (!clientUser) {
+        clientUser = await createUser({
+          email: clientEmail,
+          name: values.nome,
+          password: 'Skip@Pass123',
+          role: 'user',
+        })
+      }
+
+      if (clientUser) {
+        clientUserId = clientUser.id
+      }
+
       await createCliente({
         nome: values.nome,
         objetivo_principal: values.objetivo_principal || '',
@@ -80,7 +100,7 @@ export function NewClientModal() {
         data_inicio: values.data_inicio.toISOString(),
         status: 'ativo',
         progresso: 0,
-        user_id: user?.id,
+        user_id: clientUserId,
         tldv_meeting_id: finalTldvId || '',
       })
 
@@ -123,6 +143,19 @@ export function NewClientModal() {
                   <FormLabel>Nome</FormLabel>
                   <FormControl>
                     <Input placeholder="Nome do cliente" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Email do cliente" type="email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

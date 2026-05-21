@@ -31,7 +31,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { ExecutionDrawer } from '@/components/ExecutionDrawer'
 
 export default function ClientDetails() {
-  const { id } = useParams<{ id: string }>()
+  const { email } = useParams<{ email: string }>()
   const navigate = useNavigate()
 
   const [client, setClient] = useState<Cliente | null>(null)
@@ -59,12 +59,13 @@ export default function ClientDetails() {
   const isDeletedRef = useRef(false)
 
   const fetchData = useCallback(async () => {
-    if (!id || isDeletedRef.current) return
+    if (!email || isDeletedRef.current) return
     try {
-      const c = await getCliente(id)
+      const { getClienteByEmail } = await import('@/services/clients')
+      const c = await getClienteByEmail(email)
       setClient(c)
 
-      const ps = await getPlanos(id)
+      const ps = await getPlanos(c.id)
       if (ps.length > 0) {
         setPlano(ps[0])
         const es = await getEtapas(ps[0].id)
@@ -86,7 +87,10 @@ export default function ClientDetails() {
         const { default: pb } = await import('@/lib/pocketbase/client')
         const hist = await pb
           .collection('historico_acoes')
-          .getFullList({ filter: `registro_id = "${id}" && tabela = "clientes"`, sort: '-created' })
+          .getFullList({
+            filter: `registro_id = "${c.id}" && tabela = "clientes"`,
+            sort: '-created',
+          })
         const errLog = hist.find((h: any) => h.dados_depois?.error)
         if (errLog) {
           let errorMsg = errLog.dados_depois.error
@@ -123,7 +127,7 @@ export default function ClientDetails() {
     } finally {
       setLoading(false)
     }
-  }, [id, navigate])
+  }, [email, navigate])
 
   useEffect(() => {
     fetchData()
@@ -184,7 +188,7 @@ export default function ClientDetails() {
   useRealtime('etapas', () => fetchData())
   useRealtime('planos', () => fetchData())
   useRealtime('clientes', (e) => {
-    if (e.action === 'delete' && e.record.id === id) {
+    if (e.action === 'delete' && client && e.record.id === client.id) {
       if (!isDeletedRef.current) {
         isDeletedRef.current = true
         toast.error('Este cliente foi removido.')

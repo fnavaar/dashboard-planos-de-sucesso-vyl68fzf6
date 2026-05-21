@@ -23,6 +23,14 @@ import {
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { getUsers, User as AppUser } from '@/services/users'
+import {
   Sparkles,
   Plus,
   Loader2,
@@ -58,6 +66,13 @@ export function KanbanBoard({
   readOnly,
 }: Props) {
   const [dragOverCol, setDragOverCol] = useState<string | null>(null)
+  const [usersList, setUsersList] = useState<AppUser[]>([])
+
+  useEffect(() => {
+    getUsers()
+      .then(setUsersList)
+      .catch(() => {})
+  }, [])
   const [editingCard, setEditingCard] = useState<CardExecucao | null>(null)
   const [addingToEtapa, setAddingToEtapa] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -282,6 +297,7 @@ export function KanbanBoard({
           onUpdate()
         }}
         readOnly={readOnly}
+        usersList={usersList}
       />
     </div>
   )
@@ -368,6 +384,7 @@ function TaskDialog({
   onClose,
   onSave,
   readOnly,
+  usersList,
 }: {
   card: CardExecucao | null
   etapaId: string | null
@@ -375,6 +392,7 @@ function TaskDialog({
   onClose: () => void
   onSave: () => void
   readOnly?: boolean
+  usersList: AppUser[]
 }) {
   const [loading, setLoading] = useState(false)
   const isEditing = !!card
@@ -449,16 +467,32 @@ function TaskDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="responsavel">Responsável</Label>
-              <Input
-                id="responsavel"
-                name="responsavel"
-                defaultValue={card?.responsavel || ''}
-                placeholder="Ex: João Silva"
-                readOnly={readOnly}
-                className={
-                  readOnly ? 'bg-slate-50 dark:bg-slate-900 border-none pointer-events-none' : ''
-                }
-              />
+              {readOnly ? (
+                <Input
+                  id="responsavel"
+                  name="responsavel"
+                  defaultValue={card?.responsavel || ''}
+                  placeholder="Sem responsável"
+                  readOnly={readOnly}
+                  className="bg-slate-50 dark:bg-slate-900 border-none pointer-events-none"
+                />
+              ) : (
+                <Select name="responsavel" defaultValue={card?.responsavel || ''}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usersList.map((u) => {
+                      const identifier = u.name || u.email
+                      return (
+                        <SelectItem key={u.id} value={identifier}>
+                          {identifier}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="como_foi_executado">Como foi executado?</Label>

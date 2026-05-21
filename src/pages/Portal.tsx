@@ -4,6 +4,7 @@ import { getCliente, Cliente } from '@/services/clients'
 import { getPlanos, Plano } from '@/services/planos'
 import { getEtapas, Etapa } from '@/services/etapas'
 import { getCardsExecucao, CardExecucao } from '@/services/cards_execucao'
+import { useAuth } from '@/hooks/use-auth'
 import { ProgressMap } from '@/components/ProgressMap'
 import { KanbanBoard } from '@/components/KanbanBoard'
 import { useRealtime } from '@/hooks/use-realtime'
@@ -12,7 +13,8 @@ import { Card } from '@/components/ui/card'
 import { AlertCircle, Target, User } from 'lucide-react'
 
 export default function Portal() {
-  const { id } = useParams()
+  const { email } = useParams()
+  const { user } = useAuth()
   const [client, setClient] = useState<Cliente | null>(null)
   const [plano, setPlano] = useState<Plano | null>(null)
   const [etapas, setEtapas] = useState<Etapa[]>([])
@@ -21,9 +23,15 @@ export default function Portal() {
   const [error, setError] = useState(false)
 
   const fetchData = async () => {
-    if (!id) return
+    if (!email) return
+    if (user?.role !== 'admin' && user?.email !== email) {
+      setError(true)
+      setLoading(false)
+      return
+    }
     try {
-      const c = await getCliente(id)
+      const { getClienteByEmail } = await import('@/services/clients')
+      const c = await getClienteByEmail(email)
       setClient(c)
 
       const ps = await getPlanos(c.id)
@@ -54,7 +62,7 @@ export default function Portal() {
 
   useEffect(() => {
     fetchData()
-  }, [id])
+  }, [email, user])
 
   useRealtime('clientes', () => fetchData())
   useRealtime('planos', () => fetchData())

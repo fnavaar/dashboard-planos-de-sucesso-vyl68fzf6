@@ -224,7 +224,7 @@ export default function Index() {
             {clients.map((client, i) => (
               <Card
                 key={client.id}
-                onClick={() => navigate(`/cliente/${client.id}`)}
+                onClick={() => navigate(`/cliente/${client.expand?.user_id?.email || client.id}`)}
                 className="group relative p-6 cursor-pointer border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-sm hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:scale-[1.03] transition-all duration-200 animate-fade-in-up"
                 style={{ animationDelay: `${i * 50}ms` }}
               >
