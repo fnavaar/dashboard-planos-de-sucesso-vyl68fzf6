@@ -56,6 +56,7 @@ import { deleteCliente } from '@/services/clients'
 import { getPlanos, deletePlano } from '@/services/planos'
 import { getEtapas, deleteEtapa } from '@/services/etapas'
 import { getCardsExecucao, deleteCardExecucao } from '@/services/cards_execucao'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Props {
   client: Cliente
@@ -66,6 +67,8 @@ interface Props {
 }
 
 export function ClientHeader({ client, plano, etapas, onUpdate, onConfetti }: Props) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const StatusIcon =
     client.status === 'ativo' ? Clock : client.status === 'pausado' ? PauseCircle : CheckCircle2
 
@@ -131,64 +134,69 @@ export function ClientHeader({ client, plano, etapas, onUpdate, onConfetti }: Pr
                   >
                     <StatusIcon className="w-4 h-4" /> {client.status}
                   </Badge>
-                  <EditClientDialog client={client} onUpdate={onUpdate} />
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="bg-red-500/20 hover:bg-red-500/40 text-white border-none shadow-sm transition-all duration-200"
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4 mr-2" />
-                        )}
-                        Deletar
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Deletar Cliente?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action is permanent and will delete all associated plans, stages, and
-                          execution logs.
-                          <br />
-                          <br />
-                          (Esta ação é permanente e excluirá todos os planos, etapas e logs de
-                          execução associados.)
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteClient}
-                          className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                        >
-                          Deletar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {isAdmin && (
+                    <>
+                      <EditClientDialog client={client} onUpdate={onUpdate} />
 
-                  {!plano && (
-                    <GeneratePlanDialog
-                      client={client}
-                      onSuccess={() => {
-                        onUpdate()
-                        onConfetti()
-                      }}
-                      trigger={
-                        <Button
-                          size="sm"
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all duration-200 dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:font-bold dark:hover:from-yellow-500 dark:hover:to-amber-700"
-                        >
-                          <Sparkles className="w-4 h-4 mr-2" /> Gerar Plano com IA
-                        </Button>
-                      }
-                    />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="bg-red-500/20 hover:bg-red-500/40 text-white border-none shadow-sm transition-all duration-200"
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4 mr-2" />
+                            )}
+                            Deletar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Deletar Cliente?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action is permanent and will delete all associated plans, stages,
+                              and execution logs.
+                              <br />
+                              <br />
+                              (Esta ação é permanente e excluirá todos os planos, etapas e logs de
+                              execução associados.)
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDeleteClient}
+                              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                            >
+                              Deletar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      {!plano && (
+                        <GeneratePlanDialog
+                          client={client}
+                          onSuccess={() => {
+                            onUpdate()
+                            onConfetti()
+                          }}
+                          trigger={
+                            <Button
+                              size="sm"
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all duration-200 dark:bg-gradient-to-r dark:from-yellow-400 dark:to-amber-600 dark:text-slate-900 dark:font-bold dark:hover:from-yellow-500 dark:hover:to-amber-700"
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" /> Gerar Plano com IA
+                            </Button>
+                          }
+                        />
+                      )}
+                    </>
                   )}
                 </div>
               </div>

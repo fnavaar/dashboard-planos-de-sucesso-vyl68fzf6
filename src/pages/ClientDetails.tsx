@@ -59,7 +59,7 @@ export default function ClientDetails() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const isClient = !isAdmin
-  const canEdit = isAdmin || (client && user?.id === client.user_id)
+  const canEdit = isAdmin
 
   const firstUncompletedOrdem =
     localEtapas
@@ -82,11 +82,7 @@ export default function ClientDetails() {
         objetivo_principal: c.objetivo_principal || '',
         contexto: c.contexto || '',
       })
-      if (
-        !c.objetivo_principal &&
-        !c.contexto &&
-        (!c.user_id || user?.id === c.user_id || user?.role === 'admin')
-      ) {
+      if (!c.objetivo_principal && !c.contexto && user?.role === 'admin') {
         setEditingInsights(true)
       }
 
@@ -338,7 +334,7 @@ export default function ClientDetails() {
             )}
           </CardHeader>
           <CardContent>
-            {editingInsights ? (
+            {editingInsights && canEdit ? (
               <Input
                 value={insightData.objetivo_principal}
                 onChange={(e) =>
@@ -365,7 +361,7 @@ export default function ClientDetails() {
             )}
           </CardHeader>
           <CardContent>
-            {editingInsights ? (
+            {editingInsights && canEdit ? (
               <Textarea
                 value={insightData.contexto}
                 onChange={(e) => setInsightData({ ...insightData, contexto: e.target.value })}

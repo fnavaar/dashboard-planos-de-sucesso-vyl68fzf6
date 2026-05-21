@@ -469,7 +469,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                           </span>
                         )}
                       </FormLabel>
-                      {!isFieldDisabled && (
+                      {!isFieldDisabled && isAdmin && (
                         <Button
                           type="button"
                           variant="outline"
@@ -581,7 +581,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                     <FormItem>
                       <FormLabel>Responsável</FormLabel>
                       <Select
-                        disabled={isFieldDisabled}
+                        disabled={isFieldDisabled || !isAdmin}
                         onValueChange={field.onChange}
                         value={field.value}
                       >
@@ -621,10 +621,10 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                             <Input
                               placeholder="https://..."
                               {...inputField}
-                              disabled={isFieldDisabled}
+                              disabled={isFieldDisabled || !isAdmin}
                             />
                           </FormControl>
-                          {!isFieldDisabled && (
+                          {!isFieldDisabled && isAdmin && (
                             <Button
                               type="button"
                               variant="outline"
@@ -640,7 +640,7 @@ export function ExecutionDrawer({ etapa, clientUserId, open, onOpenChange, onSav
                     )}
                   />
                 ))}
-                {!isFieldDisabled && (
+                {!isFieldDisabled && isAdmin && (
                   <Button
                     type="button"
                     variant="outline"
