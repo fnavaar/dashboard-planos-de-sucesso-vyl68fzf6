@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast'
 import { getUserByEmail, createUser } from '@/services/users'
 import pb from '@/lib/pocketbase/client'
 import { Loader2 } from 'lucide-react'
+import { extractFieldErrors } from '@/lib/pocketbase/errors'
 
 const formSchema = z.object({
   nome: z.string().min(1, 'Nome é obrigatório'),
@@ -129,7 +130,20 @@ export function NewClientModal() {
 
       form.reset()
       setIsOpen(false)
-    } catch (err) {
+    } catch (err: any) {
+      const fieldErrors = extractFieldErrors(err)
+
+      if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+        Object.entries(fieldErrors).forEach(([field, message]) => {
+          if (field === 'email' && err?.response?.data?.email?.code === 'validation_not_unique') {
+            form.setError('email', { type: 'manual', message: 'Este e-mail já está em uso.' })
+          } else {
+            form.setError(field as any, { type: 'manual', message })
+          }
+        })
+        return
+      }
+
       toast({ title: 'Erro ao criar cliente', variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
