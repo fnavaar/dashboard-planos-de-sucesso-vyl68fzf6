@@ -228,7 +228,7 @@ export default function Index() {
                 </p>
                 <Button
                   onClick={() => setIsOpen(true)}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold h-12 px-8 shadow-md hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
+                  className="bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold h-12 px-8 shadow-md hover:shadow-green-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
                 >
                   Novo Cliente
                 </Button>

@@ -55,14 +55,14 @@ export default function Layout() {
               <>
                 <Button
                   onClick={() => setIsOpen(true)}
-                  className="hidden sm:flex bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl font-bold dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
+                  className="hidden sm:flex bg-green-600 hover:bg-green-500 text-white shadow-md hover:shadow-lg hover:shadow-green-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl font-bold dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
                 >
                   <Plus className="w-5 h-5 mr-2 stroke-[3]" /> Novo Cliente
                 </Button>
                 <Button
                   onClick={() => setIsOpen(true)}
                   size="icon"
-                  className="sm:hidden bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg hover:shadow-indigo-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
+                  className="sm:hidden bg-green-600 hover:bg-green-500 text-white shadow-md hover:shadow-lg hover:shadow-green-500/40 hover:scale-105 hover:animate-pulse transition-all duration-200 rounded-xl dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 dark:hover:shadow-primary/40"
                 >
                   <Plus className="w-5 h-5 stroke-[3]" />
                 </Button>
